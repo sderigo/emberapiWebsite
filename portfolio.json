@@ -1,0 +1,71 @@
+{
+  "profile": {
+    "name": "EmberAPI",
+    "description": "A look at the Roblox projects I've contributed to."
+  },
+  "games": [
+    {
+      "placeId": 119987266683883,
+      "universeId": 9649298941,
+      "status": "Live",
+      "year": "2026",
+      "accent": "sunburst",
+      "tags": ["Simulation", "Tycoon", "Live Ops"],
+      "externalUrl": "https://www.roblox.com/games/119987266683883/Survive-LAVA-for-Brainrots"
+    },
+    {
+      "placeId": 127742093697776,
+      "universeId": 8316902627,
+      "status": "Live",
+      "year": "2025",
+      "accent": "ember",
+      "tags": ["Strategy", "Tower Defense", "Live Ops"],
+      "externalUrl": "https://www.roblox.com/games/127742093697776/Plants-Vs-Brainrots"
+    },
+    {
+      "placeId": 126884695634066,
+      "universeId": 7436755782,
+      "status": "Live",
+      "year": "2025",
+      "accent": "sunburst",
+      "tags": ["Simulation", "Tycoon", "Progression"],
+      "externalUrl": "https://www.roblox.com/games/126884695634066/Grow-a-Garden"
+    },
+    {
+      "placeId": 2616498302,
+      "universeId": 939039129,
+      "status": "Live",
+      "year": "2019",
+      "accent": "flare",
+      "tags": ["Simulator", "Combat", "Grinding"],
+      "externalUrl": "https://www.roblox.com/games/2616498302/Slaying-Simulator"
+    },
+    {
+      "placeId": 10141430483,
+      "universeId": 3723358122,
+      "status": "Live",
+      "year": "2022",
+      "accent": "ember",
+      "tags": ["Action", "Progression", "Systems"],
+      "externalUrl": "https://www.roblox.com/games/10141430483/Slaying-Legends"
+    },
+    {
+      "placeId": 9831850570,
+      "universeId": 3635910706,
+      "status": "Live",
+      "year": "2022",
+      "accent": "sunburst",
+      "tags": ["Sports", "Simulator", "Progression"],
+      "externalUrl": "https://www.roblox.com/games/9831850570/Football-Pro-Simulator"
+    },
+    {
+      "placeId": 15278535431,
+      "universeId": 5269127662,
+      "status": "Live",
+      "year": "2023",
+      "accent": "ember",
+      "tags": ["Tower Defense", "Anime", "Strategy"],
+      "externalUrl": "https://www.roblox.com/games/15278535431/Fruit-Tower-Defense-Anime"
+    }
+  ]
+}

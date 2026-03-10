@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EmberAPI | Roblox Portfolio</title>
+    <meta
+      name="description"
+      content="EmberAPI's Roblox portfolio featuring live CCU, total visits, and showcased projects."
+    />
+    <meta name="theme-color" content="#ff7a00" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="background background-one"></div>
+      <div class="background background-two"></div>
+      <div class="noise"></div>
+
+      <header class="site-header">
+        <a class="brand-mark" href="#top">EmberAPI</a>
+        <div class="header-meta">
+          <span class="status-dot"></span>
+          <span id="refreshState">Loading live Roblox data</span>
+        </div>
+      </header>
+
+      <main id="top">
+        <section class="hero section-block">
+          <div class="hero-copy">
+            <p class="eyebrow">Selected Work</p>
+            <h1>Roblox projects I&apos;ve contributed to.</h1>
+            <p class="hero-text" id="heroDescription">
+              A look at the games I&apos;ve worked on across scripting, systems, and live development.
+            </p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="#gamesGrid">View Work</a>
+              <a
+                class="button button-secondary"
+                href="https://www.roblox.com/users/69326238/profile"
+                target="_blank"
+                rel="noreferrer"
+              >
+                My Profile
+              </a>
+              <a
+                class="button button-secondary social-button"
+                href="https://x.com/EmberAPI"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="EmberAPI on X"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M18.9 2H22l-6.76 7.73L23.2 22h-6.24l-4.89-7.17L5.8 22H2.7l7.23-8.26L.8 2h6.4l4.42 6.62L18.9 2Zm-1.09 18h1.72L6.27 3.9H4.43l13.38 16.1Z"
+                    fill="currentColor"
+                  ></path>
+                </svg>
+              </a>
+            </div>
+          </div>
+
+          <aside class="totals-panel">
+            <div class="panel-label-row">
+              <span class="panel-label">Overview</span>
+              <span class="pill">Refreshes every 90s</span>
+            </div>
+            <div class="totals-grid">
+              <article class="metric-card">
+                <span class="metric-label">Combined CCU</span>
+                <strong class="metric-value" id="totalCcu">--</strong>
+                <span class="metric-detail">Across every showcased project</span>
+              </article>
+              <article class="metric-card">
+                <span class="metric-label">Combined Visits</span>
+                <strong class="metric-value" id="totalVisits">--</strong>
+                <span class="metric-detail">Lifetime visits across these projects</span>
+              </article>
+              <article class="metric-card">
+                <span class="metric-label">Projects</span>
+                <strong class="metric-value" id="gameCount">--</strong>
+                <span class="metric-detail">Featured on this portfolio</span>
+              </article>
+              <article class="metric-card accent-card">
+                <span class="metric-label">Last Refresh</span>
+                <strong class="metric-value" id="lastRefresh">Starting</strong>
+                <span class="metric-detail">Latest live stat update</span>
+              </article>
+            </div>
+          </aside>
+        </section>
+
+        <section class="section-block content-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Projects</p>
+              <h2>Featured projects</h2>
+            </div>
+            <p class="section-text">
+              A closer look at the games included in this portfolio.
+            </p>
+          </div>
+
+          <div class="error-banner hidden" id="errorBanner"></div>
+          <div class="games-grid" id="gamesGrid"></div>
+        </section>
+      </main>
+    </div>
+
+    <template id="gameCardTemplate">
+      <article class="game-card">
+        <div class="game-media-wrap">
+          <div class="game-media-track">
+            <img class="game-media game-media-current" alt="" loading="lazy" />
+            <img class="game-media game-media-next" alt="" loading="lazy" />
+          </div>
+          <div class="game-media-controls">
+            <button class="game-media-control game-media-control-prev" type="button" aria-label="Previous thumbnail">
+              <span>&lsaquo;</span>
+            </button>
+            <button class="game-media-control game-media-control-next" type="button" aria-label="Next thumbnail">
+              <span>&rsaquo;</span>
+            </button>
+          </div>
+          <div class="game-media-glow"></div>
+        </div>
+
+        <div class="game-content">
+          <div class="card-topline">
+            <span class="card-badge"></span>
+            <span class="card-year"></span>
+          </div>
+
+          <div class="title-row">
+            <h3 class="game-title"></h3>
+            <a class="game-link" target="_blank" rel="noreferrer">
+              <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 6.5v11l9-5.5-9-5.5Z" fill="currentColor"></path>
+              </svg>
+              <span>Play</span>
+            </a>
+          </div>
+
+          <div class="game-stats">
+            <div class="inline-stat">
+              <span class="inline-stat-label">Live CCU</span>
+              <strong class="inline-stat-value game-ccu"></strong>
+            </div>
+            <div class="inline-stat">
+              <span class="inline-stat-label">Visits</span>
+              <strong class="inline-stat-value game-visits"></strong>
+            </div>
+            <div class="inline-stat">
+              <span class="inline-stat-label">Favorites</span>
+              <strong class="inline-stat-value game-favorites"></strong>
+            </div>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <div class="modal-backdrop" id="gameModalBackdrop"></div>
+    <div class="game-modal" id="gameModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalGameTitle">
+      <div class="game-modal-shell">
+        <button class="modal-close" id="modalCloseButton" type="button" aria-label="Close details">
+          <span>&times;</span>
+        </button>
+
+        <div class="game-modal-panel">
+        <div class="modal-media-wrap">
+          <img class="modal-media" id="modalGameImage" alt="" />
+        </div>
+
+        <div class="modal-copy">
+          <div class="modal-topline">
+            <span class="card-badge" id="modalGameStatus"></span>
+            <span class="card-year" id="modalGameYear"></span>
+          </div>
+
+          <h2 class="modal-title" id="modalGameTitle"></h2>
+          <p class="modal-description" id="modalGameDescription"></p>
+
+          <div class="modal-stats">
+            <div class="inline-stat">
+              <span class="inline-stat-label">Live CCU</span>
+              <strong class="inline-stat-value" id="modalGameCcu"></strong>
+            </div>
+            <div class="inline-stat">
+              <span class="inline-stat-label">Visits</span>
+              <strong class="inline-stat-value" id="modalGameVisits"></strong>
+            </div>
+            <div class="inline-stat">
+              <span class="inline-stat-label">Favorites</span>
+              <strong class="inline-stat-value" id="modalGameFavorites"></strong>
+            </div>
+          </div>
+
+          <div class="modal-detail-row">
+            <span class="detail-label">Owner</span>
+            <a class="detail-owner" id="modalGameOwner" target="_blank" rel="noreferrer"></a>
+          </div>
+
+          <div class="detail-tags" id="modalGameTags"></div>
+
+          <div class="modal-actions">
+            <a class="button button-primary" id="modalGameLink" target="_blank" rel="noreferrer">Open on Roblox</a>
+            <a class="button button-secondary modal-secondary-action" id="modalCreatorLink" target="_blank" rel="noreferrer">View Creator</a>
+            <button class="button button-secondary modal-secondary-action" id="modalCopyLinkButton" type="button">Copy Link</button>
+          </div>
+        </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="./script.js" type="module"></script>
+  </body>
+</html>
