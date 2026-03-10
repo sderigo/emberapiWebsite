@@ -2,6 +2,8 @@ const PORTFOLIO_PATH = "./data/portfolio.json";
 const REFRESH_INTERVAL_MS = 90_000;
 const THUMBNAIL_CYCLE_INTERVAL_MS = 8_600;
 const THUMBNAIL_INITIAL_OFFSET_MS = 3_200;
+const THUMBNAIL_SLIDE_DURATION_MS = 480;
+const THUMBNAIL_SWIPE_THRESHOLD_PX = 40;
 const ROPROXY_ENDPOINTS = {
   universeByPlace: "https://apis.roproxy.com/universes/v1/places",
   games: "https://games.roproxy.com/v1/games",
@@ -34,8 +36,10 @@ const modalGameTags = document.querySelector("#modalGameTags");
 const modalGameLink = document.querySelector("#modalGameLink");
 const modalCreatorLink = document.querySelector("#modalCreatorLink");
 const modalCopyLinkButton = document.querySelector("#modalCopyLinkButton");
-const MODAL_ANIMATION_MS = 260;
-const THUMBNAIL_SLIDE_DURATION_MS = 480;
+
+const reducedMotionMediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+const touchViewportMediaQuery = window.matchMedia("(hover: none) and (pointer: coarse)");
+const narrowViewportMediaQuery = window.matchMedia("(max-width: 760px)");
 
 const compactNumberFormatter = new Intl.NumberFormat("en-US", {
   notation: "compact",
@@ -78,8 +82,15 @@ const formatCompactNumber = (value) => compactNumberFormatter.format(value ?? 0)
 const formatFullNumber = (value) => fullNumberFormatter.format(value ?? 0);
 
 const relativeRefreshLabel = (date) => {
+  const now = new Date();
   const time = date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  return `Today at ${time}`;
+
+  if (now.toDateString() === date.toDateString()) {
+    return `Today at ${time}`;
+  }
+
+  const shortDate = date.toLocaleDateString([], { month: "short", day: "numeric" });
+  return `${shortDate} at ${time}`;
 };
 
 const animateCounter = (element, fromValue, toValue, formatter) => {
@@ -120,10 +131,7 @@ const getUniverseId = async (game) => {
   return payload.universeId;
 };
 
-const getUniverseIds = async (games) => {
-  const ids = await Promise.all(games.map((game) => getUniverseId(game)));
-  return ids;
-};
+const getUniverseIds = async (games) => Promise.all(games.map((game) => getUniverseId(game)));
 
 const getGameDetails = async (universeIds) => {
   const url = `${ROPROXY_ENDPOINTS.games}?universeIds=${universeIds.join(",")}`;
@@ -184,6 +192,7 @@ const updateOverview = (profile, games) => {
   const combinedCcu = games.reduce((sum, game) => sum + (game.playing ?? 0), 0);
   const combinedVisits = games.reduce((sum, game) => sum + (game.visits ?? 0), 0);
   const now = new Date();
+  const syncTime = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
   document.title = `${profile.name} | Roblox Portfolio`;
   heroDescription.textContent = profile.description;
@@ -191,7 +200,7 @@ const updateOverview = (profile, games) => {
   animateCounter(totalVisits, overviewState.combinedVisits, combinedVisits, formatCompactNumber);
   animateCounter(gameCount, overviewState.gameCount, games.length, (value) => String(value));
   lastRefresh.textContent = relativeRefreshLabel(now);
-  setRefreshMessage(`Live data synced ${now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`);
+  setRefreshMessage(`Live stats synced at ${syncTime}`);
   overviewState = {
     combinedCcu,
     combinedVisits,
@@ -199,9 +208,7 @@ const updateOverview = (profile, games) => {
   };
 };
 
-const buildTagItems = (game) => {
-  return [game.status, game.genre, ...(game.tags ?? [])].filter(Boolean);
-};
+const buildTagItems = (game) => [game.status, game.genre, ...(game.tags ?? [])].filter(Boolean);
 
 const renderTagItems = (container, game) => {
   container.innerHTML = "";
@@ -303,7 +310,7 @@ const openGameModal = (game) => {
   modalGameStatus.textContent = game.status ?? "Live";
   modalGameYear.textContent = game.year ?? "Live";
   modalGameTitle.textContent = game.name;
-  modalGameDescription.textContent = game.description || "No public description is available for this game yet.";
+  modalGameDescription.textContent = game.description || "No public description is available for this experience right now.";
   modalGameCcu.textContent = formatCompactNumber(game.playing);
   modalGameVisits.textContent = formatCompactNumber(game.visits);
   modalGameFavorites.textContent = formatCompactNumber(game.favorites);
@@ -334,7 +341,7 @@ const closeGameModal = () => {
   modalCloseTimeoutId = window.setTimeout(() => {
     document.body.style.overflow = "";
     modalCloseTimeoutId = null;
-  }, MODAL_ANIMATION_MS);
+  }, 260);
 };
 
 const getThumbnailTrackState = (track) => thumbnailTrackStates.get(track);
@@ -350,6 +357,36 @@ const clearThumbnailTrackTimeout = (track) => {
   state.timeoutId = null;
 };
 
+const shouldAutoRotateThumbnails = () => {
+  return !reducedMotionMediaQuery.matches && !(touchViewportMediaQuery.matches && narrowViewportMediaQuery.matches);
+};
+
+const resetThumbnailGestureState = (track) => {
+  const state = getThumbnailTrackState(track);
+
+  if (!state) {
+    return;
+  }
+
+  state.pointerId = null;
+  state.pointerStartX = 0;
+  state.pointerStartY = 0;
+  state.pointerDeltaX = 0;
+  state.pointerDeltaY = 0;
+  state.isPointerDown = false;
+};
+
+const pauseAndResetThumbnailRotation = (track) => {
+  const state = getThumbnailTrackState(track);
+
+  if (!state) {
+    return;
+  }
+
+  clearThumbnailTrackTimeout(track);
+  state.hasStartedRotation = false;
+};
+
 const stopThumbnailRotation = () => {
   activeThumbnailTracks.forEach((track) => {
     const state = getThumbnailTrackState(track);
@@ -359,13 +396,14 @@ const stopThumbnailRotation = () => {
       state.timeoutId = null;
     }
   });
+
   activeThumbnailTracks.clear();
 };
 
 const scheduleThumbnailRotation = (track) => {
   const state = getThumbnailTrackState(track);
 
-  if (!state || state.frames.length < 2) {
+  if (!state || state.frames.length < 2 || !shouldAutoRotateThumbnails()) {
     return;
   }
 
@@ -447,6 +485,7 @@ const slideThumbnailTrack = async (track, direction) => {
     track.classList.remove("is-prepared-backward");
     nextImage.style.zIndex = "0";
     currentImage.style.zIndex = "1";
+
     window.requestAnimationFrame(() => {
       if (token !== state.animationToken) {
         return;
@@ -463,18 +502,129 @@ const slideThumbnailTrack = async (track, direction) => {
 const startThumbnailRotation = () => {
   stopThumbnailRotation();
 
+  if (!shouldAutoRotateThumbnails()) {
+    return;
+  }
+
   const mediaTracks = Array.from(document.querySelectorAll(".game-media-track")).filter((node) => {
     const state = getThumbnailTrackState(node);
     return state && state.frames.length > 1;
   });
 
-  if (mediaTracks.length === 0) {
+  mediaTracks.forEach((track) => {
+    activeThumbnailTracks.add(track);
+    scheduleThumbnailRotation(track);
+  });
+};
+
+const syncThumbnailRotationMode = () => {
+  if (!hasRenderedGames) {
     return;
   }
 
-  mediaTracks.forEach((node) => {
-    activeThumbnailTracks.add(node);
-    scheduleThumbnailRotation(node);
+  if (shouldAutoRotateThumbnails()) {
+    startThumbnailRotation();
+    return;
+  }
+
+  stopThumbnailRotation();
+};
+
+const addMediaQueryListener = (query, callback) => {
+  if (typeof query.addEventListener === "function") {
+    query.addEventListener("change", callback);
+    return;
+  }
+
+  query.addListener(callback);
+};
+
+const attachThumbnailSwipeHandlers = (mediaWrap, mediaTrack) => {
+  mediaWrap.addEventListener("pointerdown", (event) => {
+    const state = getThumbnailTrackState(mediaTrack);
+
+    if (!state || state.frames.length < 2) {
+      return;
+    }
+
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
+    if (event.target.closest(".game-media-control")) {
+      return;
+    }
+
+    state.pointerId = event.pointerId;
+    state.pointerStartX = event.clientX;
+    state.pointerStartY = event.clientY;
+    state.pointerDeltaX = 0;
+    state.pointerDeltaY = 0;
+    state.isPointerDown = true;
+
+    if (typeof mediaWrap.setPointerCapture === "function") {
+      mediaWrap.setPointerCapture(event.pointerId);
+    }
+  });
+
+  mediaWrap.addEventListener("pointermove", (event) => {
+    const state = getThumbnailTrackState(mediaTrack);
+
+    if (!state || !state.isPointerDown || state.pointerId !== event.pointerId) {
+      return;
+    }
+
+    state.pointerDeltaX = event.clientX - state.pointerStartX;
+    state.pointerDeltaY = event.clientY - state.pointerStartY;
+
+    if (Math.abs(state.pointerDeltaX) > Math.abs(state.pointerDeltaY) && Math.abs(state.pointerDeltaX) > 10) {
+      event.preventDefault();
+    }
+  });
+
+  const finishGesture = (event) => {
+    const state = getThumbnailTrackState(mediaTrack);
+
+    if (!state || state.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const deltaX = state.pointerDeltaX;
+    const deltaY = state.pointerDeltaY;
+    const shouldSwipe = Math.abs(deltaX) >= THUMBNAIL_SWIPE_THRESHOLD_PX && Math.abs(deltaX) > Math.abs(deltaY);
+
+    if (typeof mediaWrap.releasePointerCapture === "function" && mediaWrap.hasPointerCapture(event.pointerId)) {
+      mediaWrap.releasePointerCapture(event.pointerId);
+    }
+
+    resetThumbnailGestureState(mediaTrack);
+
+    if (!shouldSwipe) {
+      return;
+    }
+
+    state.suppressCardClick = true;
+    pauseAndResetThumbnailRotation(mediaTrack);
+    slideThumbnailTrack(mediaTrack, deltaX < 0 ? 1 : -1);
+
+    window.setTimeout(() => {
+      state.suppressCardClick = false;
+    }, 280);
+  };
+
+  mediaWrap.addEventListener("pointerup", finishGesture);
+  mediaWrap.addEventListener("pointercancel", (event) => {
+    const state = getThumbnailTrackState(mediaTrack);
+
+    if (state?.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (typeof mediaWrap.releasePointerCapture === "function" && mediaWrap.hasPointerCapture(event.pointerId)) {
+      mediaWrap.releasePointerCapture(event.pointerId);
+    }
+
+    resetThumbnailGestureState(mediaTrack);
   });
 };
 
@@ -485,23 +635,29 @@ const renderLoadingCards = (count) => {
 
   for (let index = 0; index < count; index += 1) {
     const node = cardTemplate.content.firstElementChild.cloneNode(true);
-    const title = node.querySelector(".game-title");
+    const overlayBadge = node.querySelector(".game-overlay-badge");
+    const overlayYear = node.querySelector(".game-overlay-year");
+    const overlayTitle = node.querySelector(".game-overlay-title");
+    const status = node.querySelector(".game-status");
+    const year = node.querySelector(".game-year");
+    const title = node.querySelector(".game-heading");
     const link = node.querySelector(".game-link");
     const ccu = node.querySelector(".game-ccu");
     const visits = node.querySelector(".game-visits");
     const favorites = node.querySelector(".game-favorites");
-    const badge = node.querySelector(".card-badge");
-    const year = node.querySelector(".card-year");
 
     node.classList.add("loading");
     node.style.animationDelay = `${index * 90}ms`;
-    title.textContent = "Loading";
-    link.querySelector("span").textContent = "Play";
+    overlayBadge.textContent = "Loading";
+    overlayYear.textContent = "--";
+    overlayTitle.textContent = "Loading lineup";
+    status.textContent = "Loading";
+    year.textContent = "--";
+    title.textContent = "Loading lineup";
+    link.querySelector("span").textContent = "Open";
     ccu.textContent = "--";
     visits.textContent = "--";
     favorites.textContent = "--";
-    badge.textContent = "Loading";
-    year.textContent = "2026";
 
     fragment.appendChild(node);
   }
@@ -516,15 +672,19 @@ const renderGames = (games) => {
 
   games.forEach((game, index) => {
     const node = cardTemplate.content.firstElementChild.cloneNode(true);
+    const mediaWrap = node.querySelector(".game-media-wrap");
     const mediaTrack = node.querySelector(".game-media-track");
     const mediaControls = node.querySelector(".game-media-controls");
     const currentMedia = node.querySelector(".game-media-current");
     const nextMedia = node.querySelector(".game-media-next");
     const previousButton = node.querySelector(".game-media-control-prev");
     const nextButton = node.querySelector(".game-media-control-next");
-    const badge = node.querySelector(".card-badge");
-    const year = node.querySelector(".card-year");
-    const title = node.querySelector(".game-title");
+    const overlayBadge = node.querySelector(".game-overlay-badge");
+    const overlayYear = node.querySelector(".game-overlay-year");
+    const overlayTitle = node.querySelector(".game-overlay-title");
+    const status = node.querySelector(".game-status");
+    const year = node.querySelector(".game-year");
+    const title = node.querySelector(".game-heading");
     const link = node.querySelector(".game-link");
     const ccu = node.querySelector(".game-ccu");
     const visits = node.querySelector(".game-visits");
@@ -536,38 +696,66 @@ const renderGames = (games) => {
     node.tabIndex = 0;
     node.setAttribute("role", "button");
     node.setAttribute("aria-label", `Open details for ${game.name}`);
+
     const frames = normalizeThumbnailFrames(game.imageUrls);
+
     currentMedia.src = frames[0] ?? "";
     currentMedia.alt = `${game.name} thumbnail`;
     nextMedia.src = frames[1] ?? frames[0] ?? "";
     nextMedia.alt = `${game.name} thumbnail`;
     mediaControls.hidden = frames.length < 2;
+
     frames.forEach((imageUrl, imageIndex) => {
       if (imageIndex < 3) {
         preloadThumbnail(imageUrl);
       }
     });
+
     thumbnailTrackStates.set(mediaTrack, {
       animationToken: 0,
       currentIndex: 0,
       frames,
       hasStartedRotation: false,
       isAnimating: false,
+      isPointerDown: false,
+      pointerDeltaX: 0,
+      pointerDeltaY: 0,
+      pointerId: null,
+      pointerStartX: 0,
+      pointerStartY: 0,
+      suppressCardClick: false,
       timeoutId: null
     });
-    badge.textContent = game.status ?? "Live";
+
+    overlayBadge.textContent = game.status ?? "Live";
+    overlayYear.textContent = game.year ?? "Live";
+    overlayTitle.textContent = game.name;
+    status.textContent = game.status ?? "Live";
     year.textContent = game.year ?? "Live";
     title.textContent = game.name;
     link.href = game.gameUrl;
+    link.setAttribute("aria-label", `Open ${game.name} on Roblox`);
     ccu.textContent = formatCompactNumber(game.playing);
     visits.textContent = formatCompactNumber(game.visits);
     favorites.textContent = formatCompactNumber(game.favorites);
     ccu.title = formatFullNumber(game.playing);
     visits.title = formatFullNumber(game.visits);
     favorites.title = formatFullNumber(game.favorites);
-    node.addEventListener("click", () => {
+
+    attachThumbnailSwipeHandlers(mediaWrap, mediaTrack);
+
+    node.addEventListener("click", (event) => {
+      const state = getThumbnailTrackState(mediaTrack);
+
+      if (state?.suppressCardClick) {
+        event.preventDefault();
+        state.suppressCardClick = false;
+        return;
+      }
+
       openGameModal(game);
     });
+
     node.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") {
         return;
@@ -576,23 +764,31 @@ const renderGames = (games) => {
       event.preventDefault();
       openGameModal(game);
     });
+
     link.addEventListener("click", (event) => {
       event.stopPropagation();
     });
+
     link.addEventListener("keydown", (event) => {
       event.stopPropagation();
     });
+
     previousButton.addEventListener("click", (event) => {
       event.stopPropagation();
+      pauseAndResetThumbnailRotation(mediaTrack);
       slideThumbnailTrack(mediaTrack, -1);
     });
+
     nextButton.addEventListener("click", (event) => {
       event.stopPropagation();
+      pauseAndResetThumbnailRotation(mediaTrack);
       slideThumbnailTrack(mediaTrack, 1);
     });
+
     previousButton.addEventListener("keydown", (event) => {
       event.stopPropagation();
     });
+
     nextButton.addEventListener("keydown", (event) => {
       event.stopPropagation();
     });
@@ -609,6 +805,7 @@ const updateRenderedGames = (games) => {
   const cardsByUniverseId = new Map(
     Array.from(gamesGrid.querySelectorAll(".game-card")).map((node) => [Number(node.dataset.universeId), node])
   );
+  const fragment = document.createDocumentFragment();
 
   games.forEach((game) => {
     const node = cardsByUniverseId.get(game.universeId);
@@ -627,7 +824,11 @@ const updateRenderedGames = (games) => {
     ccu.title = formatFullNumber(game.playing);
     visits.title = formatFullNumber(game.visits);
     favorites.title = formatFullNumber(game.favorites);
+
+    fragment.appendChild(node);
   });
+
+  gamesGrid.appendChild(fragment);
 
   if (activeModalUniverseId && currentGamesByUniverseId.has(activeModalUniverseId)) {
     openGameModal(currentGamesByUniverseId.get(activeModalUniverseId));
@@ -641,7 +842,7 @@ const refreshPortfolio = async () => {
   }
 
   hideError();
-  setRefreshMessage("Refreshing live Roblox stats...");
+  setRefreshMessage("Syncing live Roblox stats...");
 
   try {
     const universeIds = await getUniverseIds(portfolioData.games);
@@ -688,8 +889,13 @@ const refreshPortfolio = async () => {
       updateRenderedGames(mergedGames);
     }
   } catch (error) {
-    showError("Loading...");
-    setRefreshMessage("Loading...");
+    if (hasRenderedGames) {
+      showError("Live Roblox stats are temporarily unavailable. Showing the most recent synced data.");
+    } else {
+      showError("Live Roblox stats could not be loaded right now. Refresh to try again.");
+    }
+
+    setRefreshMessage("Unable to sync live Roblox stats");
     console.error(error);
   }
 };
@@ -700,6 +906,7 @@ gameModal.addEventListener("click", (event) => {
     closeGameModal();
   }
 });
+
 modalCloseButton.addEventListener("click", closeGameModal);
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && gameModal.classList.contains("is-visible")) {
@@ -716,9 +923,9 @@ modalCopyLinkButton.addEventListener("click", async () => {
 
   try {
     await navigator.clipboard.writeText(game.gameUrl);
-    modalCopyLinkButton.textContent = "Link Copied";
+    modalCopyLinkButton.textContent = "Link copied";
   } catch (error) {
-    modalCopyLinkButton.textContent = "Copy Failed";
+    modalCopyLinkButton.textContent = "Copy unavailable";
     console.error(error);
   }
 
@@ -732,13 +939,17 @@ modalCopyLinkButton.addEventListener("click", async () => {
   }, 1800);
 });
 
+addMediaQueryListener(reducedMotionMediaQuery, syncThumbnailRotationMode);
+addMediaQueryListener(touchViewportMediaQuery, syncThumbnailRotationMode);
+addMediaQueryListener(narrowViewportMediaQuery, syncThumbnailRotationMode);
+
 const bootstrap = async () => {
   try {
     await refreshPortfolio();
     window.setInterval(refreshPortfolio, REFRESH_INTERVAL_MS);
   } catch (error) {
-    showError("The portfolio data file could not be loaded. Check data/portfolio.json.");
-    setRefreshMessage("Portfolio data missing");
+    showError("Portfolio data could not be loaded. Check data/portfolio.json and try again.");
+    setRefreshMessage("Portfolio data unavailable");
     console.error(error);
   }
 };

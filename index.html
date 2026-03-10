@@ -6,7 +6,7 @@
     <title>EmberAPI | Roblox Portfolio</title>
     <meta
       name="description"
-      content="EmberAPI's Roblox portfolio featuring live CCU, total visits, and showcased projects."
+      content="A polished Roblox portfolio for EmberAPI featuring live player counts, visit totals, and selected projects."
     />
     <meta name="theme-color" content="#ff7a00" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -27,27 +27,27 @@
         <a class="brand-mark" href="#top">EmberAPI</a>
         <div class="header-meta">
           <span class="status-dot"></span>
-          <span id="refreshState">Loading live Roblox data</span>
+          <span id="refreshState" aria-live="polite">Syncing live Roblox stats</span>
         </div>
       </header>
 
       <main id="top">
         <section class="hero section-block">
           <div class="hero-copy">
-            <p class="eyebrow">Selected Work</p>
-            <h1>Roblox projects I&apos;ve contributed to.</h1>
+            <p class="eyebrow">Roblox Portfolio</p>
+            <h1>Roblox games I&apos;ve helped build and grow.</h1>
             <p class="hero-text" id="heroDescription">
-              A look at the games I&apos;ve worked on across scripting, systems, and live development.
+              A live portfolio of projects spanning scripting, systems design, and long-term game support.
             </p>
             <div class="hero-actions">
-              <a class="button button-primary" href="#gamesGrid">View Work</a>
+              <a class="button button-primary" href="#gamesGrid">View Projects</a>
               <a
                 class="button button-secondary"
                 href="https://www.roblox.com/users/69326238/profile"
                 target="_blank"
                 rel="noreferrer"
               >
-                My Profile
+                Roblox Profile
               </a>
               <a
                 class="button button-secondary social-button"
@@ -68,29 +68,29 @@
 
           <aside class="totals-panel">
             <div class="panel-label-row">
-              <span class="panel-label">Overview</span>
-              <span class="pill">Refreshes every 90s</span>
+              <span class="panel-label">Live Overview</span>
+              <span class="pill">Updates every 90 seconds</span>
             </div>
             <div class="totals-grid">
               <article class="metric-card">
-                <span class="metric-label">Combined CCU</span>
+                <span class="metric-label">Concurrent Players</span>
                 <strong class="metric-value" id="totalCcu">--</strong>
-                <span class="metric-detail">Across every showcased project</span>
+                <span class="metric-detail">Across this featured lineup</span>
               </article>
               <article class="metric-card">
-                <span class="metric-label">Combined Visits</span>
+                <span class="metric-label">Total Visits</span>
                 <strong class="metric-value" id="totalVisits">--</strong>
-                <span class="metric-detail">Lifetime visits across these projects</span>
+                <span class="metric-detail">Lifetime visits across featured titles</span>
               </article>
               <article class="metric-card">
-                <span class="metric-label">Projects</span>
+                <span class="metric-label">Featured Games</span>
                 <strong class="metric-value" id="gameCount">--</strong>
-                <span class="metric-detail">Featured on this portfolio</span>
+                <span class="metric-detail">Curated projects on this page</span>
               </article>
               <article class="metric-card accent-card">
-                <span class="metric-label">Last Refresh</span>
-                <strong class="metric-value" id="lastRefresh">Starting</strong>
-                <span class="metric-detail">Latest live stat update</span>
+                <span class="metric-label">Last Sync</span>
+                <strong class="metric-value" id="lastRefresh">Syncing</strong>
+                <span class="metric-detail">Most recent live stats update</span>
               </article>
             </div>
           </aside>
@@ -99,15 +99,15 @@
         <section class="section-block content-section">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Projects</p>
-              <h2>Featured projects</h2>
+              <p class="eyebrow">Featured Games</p>
+              <h2>Recent and live projects</h2>
             </div>
             <p class="section-text">
-              A closer look at the games included in this portfolio.
+              Live Roblox stats, rotating media, and quick project details for each title.
             </p>
           </div>
 
-          <div class="error-banner hidden" id="errorBanner"></div>
+          <div class="error-banner hidden" id="errorBanner" aria-live="polite"></div>
           <div class="games-grid" id="gamesGrid"></div>
         </section>
       </main>
@@ -129,21 +129,35 @@
             </button>
           </div>
           <div class="game-media-glow"></div>
+          <div class="game-media-overlay">
+            <div class="game-media-topline">
+              <span class="card-badge game-overlay-badge"></span>
+              <span class="card-year game-overlay-year"></span>
+            </div>
+            <div class="game-media-bottomline">
+              <h3 class="game-overlay-title"></h3>
+              <span class="game-overlay-action" aria-hidden="true">
+                <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 6.5v11l9-5.5-9-5.5Z" fill="currentColor"></path>
+                </svg>
+              </span>
+            </div>
+          </div>
         </div>
 
         <div class="game-content">
           <div class="card-topline">
-            <span class="card-badge"></span>
-            <span class="card-year"></span>
+            <span class="card-badge game-status"></span>
+            <span class="card-year game-year"></span>
           </div>
 
           <div class="title-row">
-            <h3 class="game-title"></h3>
+            <h3 class="game-heading"></h3>
             <a class="game-link" target="_blank" rel="noreferrer">
               <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M8 6.5v11l9-5.5-9-5.5Z" fill="currentColor"></path>
               </svg>
-              <span>Play</span>
+              <span>Open</span>
             </a>
           </div>
 
@@ -173,47 +187,47 @@
         </button>
 
         <div class="game-modal-panel">
-        <div class="modal-media-wrap">
-          <img class="modal-media" id="modalGameImage" alt="" />
-        </div>
-
-        <div class="modal-copy">
-          <div class="modal-topline">
-            <span class="card-badge" id="modalGameStatus"></span>
-            <span class="card-year" id="modalGameYear"></span>
+          <div class="modal-media-wrap">
+            <img class="modal-media" id="modalGameImage" alt="" />
           </div>
 
-          <h2 class="modal-title" id="modalGameTitle"></h2>
-          <p class="modal-description" id="modalGameDescription"></p>
-
-          <div class="modal-stats">
-            <div class="inline-stat">
-              <span class="inline-stat-label">Live CCU</span>
-              <strong class="inline-stat-value" id="modalGameCcu"></strong>
+          <div class="modal-copy">
+            <div class="modal-topline">
+              <span class="card-badge" id="modalGameStatus"></span>
+              <span class="card-year" id="modalGameYear"></span>
             </div>
-            <div class="inline-stat">
-              <span class="inline-stat-label">Visits</span>
-              <strong class="inline-stat-value" id="modalGameVisits"></strong>
+
+            <h2 class="modal-title" id="modalGameTitle"></h2>
+            <p class="modal-description" id="modalGameDescription"></p>
+
+            <div class="modal-stats">
+              <div class="inline-stat">
+                <span class="inline-stat-label">Live CCU</span>
+                <strong class="inline-stat-value" id="modalGameCcu"></strong>
+              </div>
+              <div class="inline-stat">
+                <span class="inline-stat-label">Visits</span>
+                <strong class="inline-stat-value" id="modalGameVisits"></strong>
+              </div>
+              <div class="inline-stat">
+                <span class="inline-stat-label">Favorites</span>
+                <strong class="inline-stat-value" id="modalGameFavorites"></strong>
+              </div>
             </div>
-            <div class="inline-stat">
-              <span class="inline-stat-label">Favorites</span>
-              <strong class="inline-stat-value" id="modalGameFavorites"></strong>
+
+            <div class="modal-detail-row">
+              <span class="detail-label">Published By</span>
+              <a class="detail-owner" id="modalGameOwner" target="_blank" rel="noreferrer"></a>
+            </div>
+
+            <div class="detail-tags" id="modalGameTags"></div>
+
+            <div class="modal-actions">
+              <a class="button button-primary" id="modalGameLink" target="_blank" rel="noreferrer">Open on Roblox</a>
+              <a class="button button-secondary modal-secondary-action" id="modalCreatorLink" target="_blank" rel="noreferrer">View Creator Page</a>
+              <button class="button button-secondary modal-secondary-action" id="modalCopyLinkButton" type="button">Copy Link</button>
             </div>
           </div>
-
-          <div class="modal-detail-row">
-            <span class="detail-label">Owner</span>
-            <a class="detail-owner" id="modalGameOwner" target="_blank" rel="noreferrer"></a>
-          </div>
-
-          <div class="detail-tags" id="modalGameTags"></div>
-
-          <div class="modal-actions">
-            <a class="button button-primary" id="modalGameLink" target="_blank" rel="noreferrer">Open on Roblox</a>
-            <a class="button button-secondary modal-secondary-action" id="modalCreatorLink" target="_blank" rel="noreferrer">View Creator</a>
-            <button class="button button-secondary modal-secondary-action" id="modalCopyLinkButton" type="button">Copy Link</button>
-          </div>
-        </div>
         </div>
       </div>
     </div>
