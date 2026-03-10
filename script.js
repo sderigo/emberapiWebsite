@@ -151,6 +151,31 @@ const loadPortfolioData = async () => {
   }
 };
 
+const ensurePortfolioData = async () => {
+  if (portfolioData) {
+    return portfolioData;
+  }
+
+  const embeddedData = getEmbeddedPortfolioData();
+
+  if (embeddedData) {
+    portfolioData = embeddedData;
+  }
+
+  try {
+    portfolioData = await loadPortfolioData();
+  } catch (error) {
+    if (portfolioData) {
+      console.warn("Using embedded portfolio data after startup load failure.", error);
+      return portfolioData;
+    }
+
+    throw error;
+  }
+
+  return portfolioData;
+};
+
 const getUniverseId = async (game) => {
   if (game.universeId) {
     return game.universeId;
@@ -866,7 +891,7 @@ const updateRenderedGames = (games) => {
 
 const refreshPortfolio = async () => {
   if (!portfolioData) {
-    portfolioData = await loadPortfolioData();
+    portfolioData = await ensurePortfolioData();
     renderLoadingCards(portfolioData.games.length || 3);
   }
 
@@ -974,6 +999,10 @@ addMediaQueryListener(narrowViewportMediaQuery, syncThumbnailRotationMode);
 
 const bootstrap = async () => {
   try {
+    if (!portfolioData) {
+      portfolioData = getEmbeddedPortfolioData();
+    }
+
     await refreshPortfolio();
     window.setInterval(refreshPortfolio, REFRESH_INTERVAL_MS);
   } catch (error) {
