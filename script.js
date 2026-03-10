@@ -36,6 +36,7 @@ const modalGameTags = document.querySelector("#modalGameTags");
 const modalGameLink = document.querySelector("#modalGameLink");
 const modalCreatorLink = document.querySelector("#modalCreatorLink");
 const modalCopyLinkButton = document.querySelector("#modalCopyLinkButton");
+const portfolioDataFallback = document.querySelector("#portfolioDataFallback");
 
 const reducedMotionMediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 const touchViewportMediaQuery = window.matchMedia("(hover: none) and (pointer: coarse)");
@@ -120,6 +121,34 @@ const fetchJson = async (url, options = {}) => {
   }
 
   return response.json();
+};
+
+const getEmbeddedPortfolioData = () => {
+  if (!portfolioDataFallback?.textContent) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(portfolioDataFallback.textContent);
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};
+
+const loadPortfolioData = async () => {
+  try {
+    return await fetchJson(PORTFOLIO_PATH);
+  } catch (error) {
+    const embeddedData = getEmbeddedPortfolioData();
+
+    if (embeddedData) {
+      console.warn("Falling back to embedded portfolio data.", error);
+      return embeddedData;
+    }
+
+    throw error;
+  }
 };
 
 const getUniverseId = async (game) => {
@@ -837,7 +866,7 @@ const updateRenderedGames = (games) => {
 
 const refreshPortfolio = async () => {
   if (!portfolioData) {
-    portfolioData = await fetchJson(PORTFOLIO_PATH);
+    portfolioData = await loadPortfolioData();
     renderLoadingCards(portfolioData.games.length || 3);
   }
 
