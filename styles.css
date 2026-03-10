@@ -243,10 +243,6 @@ button:focus-visible,
   min-width: 11rem;
 }
 
-.button-label-compact {
-  display: none;
-}
-
 .button {
   display: inline-flex;
   align-items: center;
@@ -1126,14 +1122,6 @@ button:focus-visible,
     min-width: 0;
     flex: 1 1 auto;
     padding-inline: 0.95rem;
-  }
-
-  .button-label-full {
-    display: none;
-  }
-
-  .button-label-compact {
-    display: inline;
   }
 
   .hero-actions .social-button {
