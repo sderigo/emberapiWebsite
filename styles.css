@@ -239,6 +239,14 @@ button:focus-visible,
   margin-top: 2.2rem;
 }
 
+.hero-primary-button {
+  min-width: 11rem;
+}
+
+.button-label-compact {
+  display: none;
+}
+
 .button {
   display: inline-flex;
   align-items: center;
@@ -283,9 +291,54 @@ button:focus-visible,
   padding: 0;
 }
 
+.icon-button {
+  position: relative;
+}
+
 .social-button svg {
   width: 1rem;
   height: 1rem;
+}
+
+.tooltip-button::before,
+.tooltip-button::after {
+  position: absolute;
+  left: 50%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.tooltip-button::before {
+  content: "";
+  top: calc(100% + 0.4rem);
+  border-right: 0.35rem solid transparent;
+  border-bottom: 0.4rem solid rgba(17, 7, 4, 0.95);
+  border-left: 0.35rem solid transparent;
+  transform: translate(-50%, -0.1rem);
+}
+
+.tooltip-button::after {
+  content: attr(data-tooltip);
+  top: calc(100% + 0.75rem);
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgba(255, 186, 121, 0.22);
+  border-radius: 999px;
+  background: rgba(17, 7, 4, 0.95);
+  color: #fff1de;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  transform: translate(-50%, -0.15rem);
+}
+
+.tooltip-button:hover::before,
+.tooltip-button:hover::after,
+.tooltip-button:focus-visible::before,
+.tooltip-button:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 
 .totals-panel,
@@ -1065,11 +1118,27 @@ button:focus-visible,
 
   .hero-actions {
     width: 100%;
-    gap: 0.7rem;
+    flex-wrap: nowrap;
+    gap: 0.55rem;
   }
 
-  .hero-actions .button:not(.social-button) {
-    flex: 1 1 12rem;
+  .hero-primary-button {
+    min-width: 0;
+    flex: 1 1 auto;
+    padding-inline: 0.95rem;
+  }
+
+  .button-label-full {
+    display: none;
+  }
+
+  .button-label-compact {
+    display: inline;
+  }
+
+  .hero-actions .social-button {
+    width: 3.15rem;
+    min-width: 3.15rem;
   }
 
   .totals-panel {
@@ -1232,8 +1301,13 @@ button:focus-visible,
     grid-template-columns: 1fr;
   }
 
-  .hero-actions .button:not(.social-button) {
-    flex-basis: 100%;
+  .hero-actions {
+    gap: 0.45rem;
+  }
+
+  .hero-actions .social-button {
+    width: 3rem;
+    min-width: 3rem;
   }
 
   .modal-title {
