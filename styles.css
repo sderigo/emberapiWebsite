@@ -282,9 +282,14 @@ button:focus-visible,
 }
 
 .social-button {
+  flex: 0 0 3.3rem;
   width: 3.3rem;
+  height: 3.3rem;
   min-width: 3.3rem;
+  min-height: 3.3rem;
   padding: 0;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
 }
 
 .icon-button {
@@ -1233,8 +1238,12 @@ button:focus-visible,
   }
 
   .hero-actions .social-button {
+    flex: 0 0 3.15rem;
     width: 3.15rem;
+    height: 3.15rem;
     min-width: 3.15rem;
+    min-height: 3.15rem;
+    padding: 0;
   }
 
   .totals-panel {
@@ -1421,8 +1430,11 @@ button:focus-visible,
   }
 
   .hero-actions .social-button {
+    flex: 0 0 3rem;
     width: 3rem;
+    height: 3rem;
     min-width: 3rem;
+    min-height: 3rem;
   }
 
   .modal-title {
