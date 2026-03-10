@@ -44,28 +44,24 @@
                 <span>Projects</span>
               </a>
               <a
-                class="button button-secondary social-button icon-button tooltip-button"
+                class="button button-secondary social-button icon-button tooltip-button roblox-button"
                 href="https://www.roblox.com/users/69326238/profile"
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Roblox Profile"
+                title="Roblox Profile"
                 data-tooltip="Roblox Profile"
               >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    fill-rule="evenodd"
-                    clip-rule="evenodd"
-                    d="M5.56 0 0 18.44 18.44 24 24 5.56 5.56 0Zm1.92 4.76 11.76 3.56-3.56 11.76-11.76-3.56L7.48 4.76Zm4.33 4.3-1.58 5.12 5.12 1.58 1.58-5.12-5.12-1.58Z"
-                    fill="currentColor"
-                  ></path>
-                </svg>
+                <img src="./roblox-mark.svg?v=20260310b" alt="" />
+                <span class="icon-tooltip" aria-hidden="true">Roblox Profile</span>
               </a>
               <a
-                class="button button-secondary social-button icon-button tooltip-button"
+                class="button button-secondary social-button icon-button tooltip-button x-button"
                 href="https://x.com/EmberAPI"
                 target="_blank"
                 rel="noreferrer"
                 aria-label="EmberAPI on X"
+                title="X Profile"
                 data-tooltip="X Profile"
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -74,6 +70,7 @@
                     fill="currentColor"
                   ></path>
                 </svg>
+                <span class="icon-tooltip" aria-hidden="true">X Profile</span>
               </a>
             </div>
           </div>
@@ -114,9 +111,6 @@
               <p class="eyebrow">Featured Games</p>
               <h2>Recent and live projects</h2>
             </div>
-            <p class="section-text">
-              Live Roblox stats, rotating media, and quick project details for each title.
-            </p>
           </div>
 
           <div class="error-banner hidden" id="errorBanner" aria-live="polite"></div>
@@ -201,15 +195,18 @@
         <div class="game-modal-panel">
           <div class="modal-media-wrap">
             <img class="modal-media" id="modalGameImage" alt="" />
+            <div class="detail-tags modal-media-tags" id="modalGameTags"></div>
+            <span class="card-year modal-media-year" id="modalGameYear"></span>
           </div>
 
           <div class="modal-copy">
-            <div class="modal-topline">
-              <span class="card-badge" id="modalGameStatus"></span>
-              <span class="card-year" id="modalGameYear"></span>
+            <h2 class="modal-title" id="modalGameTitle"></h2>
+
+            <div class="modal-detail-row">
+              <span class="detail-label">Published By</span>
+              <a class="detail-owner" id="modalGameOwner" target="_blank" rel="noreferrer"></a>
             </div>
 
-            <h2 class="modal-title" id="modalGameTitle"></h2>
             <p class="modal-description" id="modalGameDescription"></p>
 
             <div class="modal-stats">
@@ -227,96 +224,32 @@
               </div>
             </div>
 
-            <div class="modal-detail-row">
-              <span class="detail-label">Published By</span>
-              <a class="detail-owner" id="modalGameOwner" target="_blank" rel="noreferrer"></a>
-            </div>
-
-            <div class="detail-tags" id="modalGameTags"></div>
-
             <div class="modal-actions">
-              <a class="button button-primary" id="modalGameLink" target="_blank" rel="noreferrer">Open on Roblox</a>
-              <a class="button button-secondary modal-secondary-action" id="modalCreatorLink" target="_blank" rel="noreferrer">View Creator Page</a>
-              <button class="button button-secondary modal-secondary-action" id="modalCopyLinkButton" type="button">Copy Link</button>
+              <a class="button button-primary" id="modalGameLink" target="_blank" rel="noreferrer">
+                <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 6.5v11l9-5.5-9-5.5Z" fill="currentColor"></path>
+                </svg>
+                <span>Open on Roblox</span>
+              </a>
+              <a class="button button-secondary modal-secondary-action" id="modalCreatorLink" target="_blank" rel="noreferrer">
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14 5h5v5h-2V8.41l-6.29 6.3-1.42-1.42L15.59 7H14V5Z" fill="currentColor"></path>
+                  <path d="M6 7h5v2H8v7h7v-3h2v5H6V7Z" fill="currentColor"></path>
+                </svg>
+                <span>View Creator Page</span>
+              </a>
+              <button class="button button-secondary modal-secondary-action" id="modalCopyLinkButton" type="button">
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 9h10v11H9V9Zm2 2v7h6v-7h-6Z" fill="currentColor"></path>
+                  <path d="M5 4h10v3h-2V6H7v9H6a1 1 0 0 1-1-1V4Z" fill="currentColor"></path>
+                </svg>
+                <span class="button-label">Copy Link</span>
+              </button>
             </div>
           </div>
         </div>
       </div>
     </div>
-
-    <script id="portfolioDataFallback" type="application/json">
-      {
-        "profile": {
-          "name": "EmberAPI",
-          "description": "A live portfolio of Roblox projects spanning scripting, systems design, and long-term game support."
-        },
-        "games": [
-          {
-            "placeId": 119987266683883,
-            "universeId": 9649298941,
-            "status": "Live",
-            "year": "2026",
-            "accent": "sunburst",
-            "tags": ["Simulation", "Tycoon", "Live Ops"],
-            "externalUrl": "https://www.roblox.com/games/119987266683883/Survive-LAVA-for-Brainrots"
-          },
-          {
-            "placeId": 127742093697776,
-            "universeId": 8316902627,
-            "status": "Live",
-            "year": "2025",
-            "accent": "ember",
-            "tags": ["Strategy", "Tower Defense", "Live Ops"],
-            "externalUrl": "https://www.roblox.com/games/127742093697776/Plants-Vs-Brainrots"
-          },
-          {
-            "placeId": 126884695634066,
-            "universeId": 7436755782,
-            "status": "Live",
-            "year": "2025",
-            "accent": "sunburst",
-            "tags": ["Simulation", "Tycoon", "Progression"],
-            "externalUrl": "https://www.roblox.com/games/126884695634066/Grow-a-Garden"
-          },
-          {
-            "placeId": 2616498302,
-            "universeId": 939039129,
-            "status": "Live",
-            "year": "2019",
-            "accent": "flare",
-            "tags": ["Simulator", "Combat", "Grinding"],
-            "externalUrl": "https://www.roblox.com/games/2616498302/Slaying-Simulator"
-          },
-          {
-            "placeId": 10141430483,
-            "universeId": 3723358122,
-            "status": "Live",
-            "year": "2022",
-            "accent": "ember",
-            "tags": ["Action", "Progression", "Systems"],
-            "externalUrl": "https://www.roblox.com/games/10141430483/Slaying-Legends"
-          },
-          {
-            "placeId": 9831850570,
-            "universeId": 3635910706,
-            "status": "Live",
-            "year": "2022",
-            "accent": "sunburst",
-            "tags": ["Sports", "Simulator", "Progression"],
-            "externalUrl": "https://www.roblox.com/games/9831850570/Football-Pro-Simulator"
-          },
-          {
-            "placeId": 15278535431,
-            "universeId": 5269127662,
-            "status": "Live",
-            "year": "2023",
-            "accent": "ember",
-            "tags": ["Tower Defense", "Anime", "Strategy"],
-            "externalUrl": "https://www.roblox.com/games/15278535431/Fruit-Tower-Defense-Anime"
-          }
-        ]
-      }
-    </script>
-    <script src="./script.js" type="module"></script>
+    <script src="./script.js?v=20260310a" type="module"></script>
   </body>
 </html>

@@ -1,4 +1,5 @@
-const PORTFOLIO_PATH = "./data/portfolio.json";
+import PORTFOLIO_DATA from "./data/portfolio.json" with { type: "json" };
+
 const REFRESH_INTERVAL_MS = 90_000;
 const THUMBNAIL_CYCLE_INTERVAL_MS = 8_600;
 const THUMBNAIL_INITIAL_OFFSET_MS = 3_200;
@@ -22,9 +23,9 @@ const gameCount = document.querySelector("#gameCount");
 const lastRefresh = document.querySelector("#lastRefresh");
 const gameModalBackdrop = document.querySelector("#gameModalBackdrop");
 const gameModal = document.querySelector("#gameModal");
+const gameModalPanel = document.querySelector(".game-modal-panel");
 const modalCloseButton = document.querySelector("#modalCloseButton");
 const modalGameImage = document.querySelector("#modalGameImage");
-const modalGameStatus = document.querySelector("#modalGameStatus");
 const modalGameYear = document.querySelector("#modalGameYear");
 const modalGameTitle = document.querySelector("#modalGameTitle");
 const modalGameDescription = document.querySelector("#modalGameDescription");
@@ -36,7 +37,7 @@ const modalGameTags = document.querySelector("#modalGameTags");
 const modalGameLink = document.querySelector("#modalGameLink");
 const modalCreatorLink = document.querySelector("#modalCreatorLink");
 const modalCopyLinkButton = document.querySelector("#modalCopyLinkButton");
-const portfolioDataFallback = document.querySelector("#portfolioDataFallback");
+const modalCopyLinkLabel = modalCopyLinkButton.querySelector(".button-label");
 
 const reducedMotionMediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 const touchViewportMediaQuery = window.matchMedia("(hover: none) and (pointer: coarse)");
@@ -65,6 +66,8 @@ let preloadedThumbnailPromises = new Map();
 let thumbnailTrackStates = new WeakMap();
 let activeThumbnailTracks = new Set();
 
+const clonePortfolioData = () => JSON.parse(JSON.stringify(PORTFOLIO_DATA));
+
 const setRefreshMessage = (message) => {
   refreshState.textContent = message;
 };
@@ -77,6 +80,10 @@ const showError = (message) => {
 const hideError = () => {
   errorBanner.classList.add("hidden");
   errorBanner.textContent = "";
+};
+
+const setModalCopyLinkLabel = (label) => {
+  modalCopyLinkLabel.textContent = label;
 };
 
 const formatCompactNumber = (value) => compactNumberFormatter.format(value ?? 0);
@@ -121,59 +128,6 @@ const fetchJson = async (url, options = {}) => {
   }
 
   return response.json();
-};
-
-const getEmbeddedPortfolioData = () => {
-  if (!portfolioDataFallback?.textContent) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(portfolioDataFallback.textContent);
-  } catch (error) {
-    console.error(error);
-    return null;
-  }
-};
-
-const loadPortfolioData = async () => {
-  try {
-    return await fetchJson(PORTFOLIO_PATH);
-  } catch (error) {
-    const embeddedData = getEmbeddedPortfolioData();
-
-    if (embeddedData) {
-      console.warn("Falling back to embedded portfolio data.", error);
-      return embeddedData;
-    }
-
-    throw error;
-  }
-};
-
-const ensurePortfolioData = async () => {
-  if (portfolioData) {
-    return portfolioData;
-  }
-
-  const embeddedData = getEmbeddedPortfolioData();
-
-  if (embeddedData) {
-    portfolioData = embeddedData;
-  }
-
-  try {
-    portfolioData = await loadPortfolioData();
-  } catch (error) {
-    if (portfolioData) {
-      console.warn("Using embedded portfolio data after startup load failure.", error);
-      return portfolioData;
-    }
-
-    throw error;
-  }
-
-  return portfolioData;
 };
 
 const getUniverseId = async (game) => {
@@ -361,7 +315,6 @@ const openGameModal = (game) => {
   activeModalUniverseId = game.universeId;
   modalGameImage.src = game.imageUrls[0] ?? "";
   modalGameImage.alt = `${game.name} thumbnail`;
-  modalGameStatus.textContent = game.status ?? "Live";
   modalGameYear.textContent = game.year ?? "Live";
   modalGameTitle.textContent = game.name;
   modalGameDescription.textContent = game.description || "No public description is available for this experience right now.";
@@ -375,7 +328,8 @@ const openGameModal = (game) => {
   modalGameOwner.href = getCreatorUrl(game);
   modalGameLink.href = game.gameUrl;
   modalCreatorLink.href = getCreatorUrl(game);
-  modalCopyLinkButton.textContent = "Copy Link";
+  gameModalPanel.dataset.accent = game.accent ?? "ember";
+  setModalCopyLinkLabel("Copy Link");
   renderTagItems(modalGameTags, game);
   gameModal.classList.add("is-visible");
   gameModalBackdrop.classList.add("is-visible");
@@ -891,7 +845,7 @@ const updateRenderedGames = (games) => {
 
 const refreshPortfolio = async () => {
   if (!portfolioData) {
-    portfolioData = await ensurePortfolioData();
+    portfolioData = clonePortfolioData();
     renderLoadingCards(portfolioData.games.length || 3);
   }
 
@@ -977,9 +931,9 @@ modalCopyLinkButton.addEventListener("click", async () => {
 
   try {
     await navigator.clipboard.writeText(game.gameUrl);
-    modalCopyLinkButton.textContent = "Link copied";
+    setModalCopyLinkLabel("Link copied");
   } catch (error) {
-    modalCopyLinkButton.textContent = "Copy unavailable";
+    setModalCopyLinkLabel("Copy unavailable");
     console.error(error);
   }
 
@@ -988,7 +942,7 @@ modalCopyLinkButton.addEventListener("click", async () => {
   }
 
   copyLinkResetTimeoutId = window.setTimeout(() => {
-    modalCopyLinkButton.textContent = "Copy Link";
+    setModalCopyLinkLabel("Copy Link");
     copyLinkResetTimeoutId = null;
   }, 1800);
 });
@@ -999,15 +953,11 @@ addMediaQueryListener(narrowViewportMediaQuery, syncThumbnailRotationMode);
 
 const bootstrap = async () => {
   try {
-    if (!portfolioData) {
-      portfolioData = getEmbeddedPortfolioData();
-    }
-
     await refreshPortfolio();
     window.setInterval(refreshPortfolio, REFRESH_INTERVAL_MS);
   } catch (error) {
-    showError("Portfolio data could not be loaded. Check data/portfolio.json and try again.");
-    setRefreshMessage("Portfolio data unavailable");
+    showError("The portfolio could not be started. Refresh to try again.");
+    setRefreshMessage("Portfolio unavailable");
     console.error(error);
   }
 };
