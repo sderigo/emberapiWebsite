@@ -39,6 +39,12 @@ const modalCreatorLink = document.querySelector("#modalCreatorLink");
 const modalCopyLinkButton = document.querySelector("#modalCopyLinkButton");
 const modalCopyLinkLabel = modalCopyLinkButton.querySelector(".button-label");
 
+const heroSection = document.querySelector("#heroSection");
+const emberCanvas = document.querySelector("#emberCanvas");
+const heroCopy = document.querySelector(".hero-copy");
+const heroTotalsPanel = document.querySelector(".totals-panel");
+const heroScrollCue = document.querySelector(".scroll-cue");
+
 const reducedMotionMediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 const touchViewportMediaQuery = window.matchMedia("(hover: none) and (pointer: coarse)");
 const narrowViewportMediaQuery = window.matchMedia("(max-width: 760px)");
@@ -654,8 +660,7 @@ const renderLoadingCards = (count) => {
     const visits = node.querySelector(".game-visits");
     const favorites = node.querySelector(".game-favorites");
 
-    node.classList.add("loading");
-    node.style.animationDelay = `${index * 90}ms`;
+    node.classList.add("loading", "is-visible");
     overlayBadge.textContent = "Loading";
     overlayYear.textContent = "--";
     overlayTitle.textContent = "Loading lineup";
@@ -700,7 +705,7 @@ const renderGames = (games) => {
 
     node.dataset.universeId = String(game.universeId);
     node.dataset.accent = game.accent ?? "ember";
-    node.style.animationDelay = `${index * 80}ms`;
+    node.style.transitionDelay = `${index * 80}ms`;
     node.tabIndex = 0;
     node.setAttribute("role", "button");
     node.setAttribute("aria-label", `Open details for ${game.name}`);
@@ -806,6 +811,7 @@ const renderGames = (games) => {
 
   gamesGrid.appendChild(fragment);
   startThumbnailRotation();
+  observeGameCards();
 };
 
 const updateRenderedGames = (games) => {
@@ -951,7 +957,316 @@ addMediaQueryListener(reducedMotionMediaQuery, syncThumbnailRotationMode);
 addMediaQueryListener(touchViewportMediaQuery, syncThumbnailRotationMode);
 addMediaQueryListener(narrowViewportMediaQuery, syncThumbnailRotationMode);
 
+/* ── Hero Entry Reveal ── */
+
+const REVEAL_BASE_DELAY = 120;
+const WORD_STAGGER = 60;
+
+const revealHero = () => {
+  const reveals = document.querySelectorAll(".hero-reveal");
+
+  reveals.forEach((el) => {
+    const delayIndex = parseInt(el.dataset.revealDelay, 10) || 0;
+    const delay = delayIndex * REVEAL_BASE_DELAY;
+
+    const words = el.querySelectorAll(".hero-word");
+
+    if (words.length > 0) {
+      words.forEach((word, wi) => {
+        window.setTimeout(() => word.classList.add("is-revealed"), delay + wi * WORD_STAGGER);
+      });
+    } else {
+      window.setTimeout(() => el.classList.add("is-revealed"), delay);
+    }
+  });
+};
+
+/* ── Scroll Parallax & Fade ── */
+
+let heroHeight = 0;
+let heroScrollTicking = false;
+let scrollEffectsActive = false;
+
+const cacheHeroHeight = () => {
+  heroHeight = heroSection.offsetHeight;
+};
+
+const handleHeroScroll = () => {
+  heroScrollTicking = false;
+
+  if (reducedMotionMediaQuery.matches || !scrollEffectsActive) {
+    return;
+  }
+
+  const scrollY = window.scrollY;
+  const deadzone = heroHeight * 0.25;
+  const effectiveScroll = Math.max(scrollY - deadzone, 0);
+  const progress = Math.min(effectiveScroll / (heroHeight * 0.55), 1);
+  const translateY = progress * -40;
+  const opacity = 1 - progress * 0.85;
+
+  heroCopy.style.transform = `translateY(${translateY}px)`;
+  heroCopy.style.opacity = opacity;
+  heroTotalsPanel.style.transform = `translateY(${translateY * 0.5}px)`;
+  heroTotalsPanel.style.opacity = opacity;
+
+  if (heroScrollCue) {
+    const cueOpacity = Math.max(1 - progress * 3, 0);
+    heroScrollCue.style.opacity = cueOpacity;
+  }
+};
+
+const initScrollEffects = () => {
+  cacheHeroHeight();
+
+  window.addEventListener("resize", cacheHeroHeight);
+
+  window.addEventListener("scroll", () => {
+    if (!heroScrollTicking) {
+      heroScrollTicking = true;
+      window.requestAnimationFrame(handleHeroScroll);
+    }
+  }, { passive: true });
+
+  window.setTimeout(() => {
+    scrollEffectsActive = true;
+    heroSection.classList.add("hero-scroll-active");
+  }, 700);
+};
+
+/* ── Card & Section IntersectionObserver ── */
+
+let cardObserver = null;
+
+const initCardObserver = () => {
+  cardObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("is-visible");
+        cardObserver.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.08,
+    rootMargin: "0px 0px -40px 0px"
+  });
+
+  document.querySelectorAll(".scroll-reveal").forEach((el) => {
+    cardObserver.observe(el);
+  });
+};
+
+const observeGameCards = () => {
+  if (!cardObserver) {
+    return;
+  }
+
+  gamesGrid.querySelectorAll(".game-card").forEach((card) => {
+    cardObserver.observe(card);
+  });
+};
+
+/* ── Ember Particle System ── */
+
+const EMBER_COLORS = ["#f97316", "#ffb366", "#ff8c3a", "#e8731a", "#ffd4a8"];
+const SMOKE_COLORS = ["#c8beb4", "#b0a89e", "#9e9690", "#d4ccc4", "#a89e94"];
+const EMBER_MAX_PARTICLES = 45;
+const SMOKE_MAX_PARTICLES = 18;
+const EMBER_FRAME_INTERVAL = 33; // ~30fps
+
+let isHeroVisible = true;
+let lastEmberFrameTime = 0;
+let emberParticles = [];
+let smokeParticles = [];
+let emberCtx = null;
+let emberDpr = 1;
+let emberWidth = 0;
+let emberHeight = 0;
+let emberAnimationId = null;
+
+const createEmberParticle = () => ({
+  x: Math.random() * emberWidth,
+  y: emberHeight + Math.random() * 20,
+  vx: (Math.random() - 0.5) * 0.3,
+  vy: -(0.3 + Math.random() * 0.6),
+  radius: 1.5 + Math.random() * 3.5,
+  maxOpacity: 0.3 + Math.random() * 0.5,
+  opacity: 0,
+  age: 0,
+  lifetime: 180 + Math.random() * 200,
+  drift: Math.random() * Math.PI * 2,
+  driftSpeed: 0.008 + Math.random() * 0.012,
+  driftAmplitude: 0.3 + Math.random() * 0.5,
+  color: EMBER_COLORS[Math.floor(Math.random() * EMBER_COLORS.length)]
+});
+
+const createSmokeParticle = () => ({
+  x: Math.random() * emberWidth,
+  y: -20 - Math.random() * 40,
+  vx: (Math.random() - 0.5) * 0.12,
+  vy: 0.12 + Math.random() * 0.2,
+  radius: 40 + Math.random() * 60,
+  maxOpacity: 0.03 + Math.random() * 0.04,
+  opacity: 0,
+  age: 0,
+  lifetime: 350 + Math.random() * 200,
+  drift: Math.random() * Math.PI * 2,
+  driftSpeed: 0.003 + Math.random() * 0.005,
+  driftAmplitude: 0.5 + Math.random() * 0.7,
+  growRate: 1 + Math.random() * 0.002,
+  color: SMOKE_COLORS[Math.floor(Math.random() * SMOKE_COLORS.length)]
+});
+
+const resizeEmberCanvas = () => {
+  emberDpr = Math.min(window.devicePixelRatio || 1, 2);
+  emberWidth = window.innerWidth;
+  emberHeight = window.innerHeight;
+  emberCanvas.width = emberWidth * emberDpr;
+  emberCanvas.height = emberHeight * emberDpr;
+
+  if (emberCtx) {
+    emberCtx.setTransform(emberDpr, 0, 0, emberDpr, 0, 0);
+  }
+};
+
+const renderEmberFrame = (timestamp) => {
+  emberAnimationId = window.requestAnimationFrame(renderEmberFrame);
+
+  if (timestamp - lastEmberFrameTime < EMBER_FRAME_INTERVAL) {
+    return;
+  }
+
+  lastEmberFrameTime = timestamp;
+
+  while (emberParticles.length < EMBER_MAX_PARTICLES) {
+    emberParticles.push(createEmberParticle());
+  }
+
+  while (smokeParticles.length < SMOKE_MAX_PARTICLES) {
+    smokeParticles.push(createSmokeParticle());
+  }
+
+  emberCtx.clearRect(0, 0, emberWidth, emberHeight);
+
+  /* Draw smoke first (behind embers) */
+  emberCtx.shadowBlur = 0;
+
+  smokeParticles = smokeParticles.filter((p) => {
+    p.age += 1;
+
+    if (p.age >= p.lifetime) {
+      return false;
+    }
+
+    const fadeIn = Math.min(p.age / 60, 1);
+    const fadeOut = Math.min((p.lifetime - p.age) / 80, 1);
+
+    p.opacity = p.maxOpacity * fadeIn * fadeOut;
+    p.x += p.vx + Math.sin(p.drift + p.age * p.driftSpeed) * p.driftAmplitude;
+    p.y += p.vy;
+    p.radius *= p.growRate;
+
+    if (p.y > emberHeight * 0.5 || p.x < -80 || p.x > emberWidth + 80) {
+      return false;
+    }
+
+    const gradient = emberCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.radius);
+    gradient.addColorStop(0, p.color);
+    gradient.addColorStop(0.4, p.color);
+    gradient.addColorStop(1, "transparent");
+    emberCtx.globalAlpha = p.opacity;
+    emberCtx.fillStyle = gradient;
+    emberCtx.beginPath();
+    emberCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    emberCtx.fill();
+
+    return true;
+  });
+
+  /* Draw embers on top */
+  emberParticles = emberParticles.filter((p) => {
+    p.age += 1;
+
+    if (p.age >= p.lifetime) {
+      return false;
+    }
+
+    const fadeIn = Math.min(p.age / 30, 1);
+    const fadeOut = Math.min((p.lifetime - p.age) / 40, 1);
+
+    p.opacity = p.maxOpacity * fadeIn * fadeOut;
+    p.x += p.vx + Math.sin(p.drift + p.age * p.driftSpeed) * p.driftAmplitude;
+    p.y += p.vy;
+
+    if (p.x < -10 || p.x > emberWidth + 10 || p.y < -20) {
+      return false;
+    }
+
+    emberCtx.beginPath();
+    emberCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    emberCtx.fillStyle = p.color;
+    emberCtx.globalAlpha = p.opacity;
+    emberCtx.shadowColor = p.color;
+    emberCtx.shadowBlur = p.radius * 6;
+    emberCtx.fill();
+
+    return true;
+  });
+
+  emberCtx.globalAlpha = 1;
+  emberCtx.shadowBlur = 0;
+};
+
+const renderStaticEmbers = () => {
+  resizeEmberCanvas();
+
+  if (!emberCtx) {
+    return;
+  }
+
+  const count = 8;
+
+  for (let i = 0; i < count; i++) {
+    const x = (emberWidth * (i + 0.5)) / count + (Math.random() - 0.5) * 60;
+    const y = emberHeight * 0.3 + Math.random() * emberHeight * 0.5;
+    const radius = 1.5 + Math.random() * 2;
+    const color = EMBER_COLORS[i % EMBER_COLORS.length];
+
+    emberCtx.beginPath();
+    emberCtx.arc(x, y, radius, 0, Math.PI * 2);
+    emberCtx.fillStyle = color;
+    emberCtx.globalAlpha = 0.15 + Math.random() * 0.15;
+    emberCtx.shadowColor = color;
+    emberCtx.shadowBlur = radius * 5;
+    emberCtx.fill();
+  }
+
+  emberCtx.globalAlpha = 1;
+  emberCtx.shadowBlur = 0;
+};
+
+const initEmberParticles = () => {
+  emberCtx = emberCanvas.getContext("2d");
+  resizeEmberCanvas();
+
+  if (reducedMotionMediaQuery.matches) {
+    renderStaticEmbers();
+    return;
+  }
+
+  window.addEventListener("resize", resizeEmberCanvas);
+  emberAnimationId = window.requestAnimationFrame(renderEmberFrame);
+};
+
+/* ── Bootstrap ── */
+
 const bootstrap = async () => {
+  requestAnimationFrame(() => requestAnimationFrame(revealHero));
+
+  initEmberParticles();
+  initScrollEffects();
+  initCardObserver();
+
   try {
     await refreshPortfolio();
     window.setInterval(refreshPortfolio, REFRESH_INTERVAL_MS);

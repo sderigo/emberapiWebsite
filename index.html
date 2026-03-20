@@ -8,7 +8,7 @@
       name="description"
       content="A polished Roblox portfolio for EmberAPI featuring live player counts, visit totals, and selected projects."
     />
-    <meta name="theme-color" content="#ff7a00" />
+    <meta name="theme-color" content="#1a1714" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -19,9 +19,10 @@
   </head>
   <body>
     <div class="page-shell">
-      <div class="background background-one"></div>
-      <div class="background background-two"></div>
-      <div class="noise"></div>
+      <div class="ember-backdrop" id="emberBackdrop" aria-hidden="true">
+        <canvas class="ember-canvas" id="emberCanvas"></canvas>
+        <div class="hero-glow"></div>
+      </div>
 
       <header class="site-header">
         <a class="brand-mark" href="#top">EmberAPI</a>
@@ -32,14 +33,15 @@
       </header>
 
       <main id="top">
-        <section class="hero section-block">
+        <section class="hero section-block" id="heroSection">
+
           <div class="hero-copy">
-            <p class="eyebrow">Roblox Portfolio</p>
-            <h1>Roblox games I&apos;ve helped build and grow.</h1>
-            <p class="hero-text" id="heroDescription">
+            <p class="eyebrow hero-reveal" data-reveal-delay="0">Roblox Portfolio</p>
+            <h1 class="hero-reveal" data-reveal-delay="1"><span class="hero-word">Roblox</span> <span class="hero-word">games</span> <span class="hero-word">I&apos;ve</span> <span class="hero-word">helped</span> <span class="hero-word">build</span> <span class="hero-word">and</span> <span class="hero-word">grow.</span></h1>
+            <p class="hero-text hero-reveal" data-reveal-delay="2" id="heroDescription">
               A live portfolio of projects spanning scripting, systems design, and long-term game support.
             </p>
-            <div class="hero-actions">
+            <div class="hero-actions hero-reveal" data-reveal-delay="3">
               <a class="button button-primary hero-primary-button" href="#gamesGrid" aria-label="View projects">
                 <span>Projects</span>
               </a>
@@ -75,7 +77,7 @@
             </div>
           </div>
 
-          <aside class="totals-panel">
+          <aside class="totals-panel hero-reveal" data-reveal-delay="4">
             <div class="panel-label-row">
               <span class="panel-label">Live Overview</span>
               <span class="pill">Updates every 90 seconds</span>
@@ -103,10 +105,17 @@
               </article>
             </div>
           </aside>
+
+          <div class="scroll-cue hero-reveal" data-reveal-delay="5" aria-hidden="true">
+            <span class="scroll-cue-label">Scroll to explore</span>
+            <svg class="scroll-cue-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 5v14M5 12l7 7 7-7"/>
+            </svg>
+          </div>
         </section>
 
         <section class="section-block content-section">
-          <div class="section-heading">
+          <div class="section-heading scroll-reveal">
             <div>
               <p class="eyebrow">Featured Games</p>
               <h2>Recent and live projects</h2>
@@ -117,6 +126,16 @@
           <div class="games-grid" id="gamesGrid"></div>
         </section>
       </main>
+
+      <footer class="site-footer">
+        <div class="footer-inner">
+          <span class="footer-text">&copy; 2026 EmberAPI</span>
+          <nav class="footer-links">
+            <a class="footer-link" href="https://www.roblox.com/users/69326238/profile" target="_blank" rel="noreferrer">Roblox</a>
+            <a class="footer-link" href="https://x.com/EmberAPI" target="_blank" rel="noreferrer">X / Twitter</a>
+          </nav>
+        </div>
+      </footer>
     </div>
 
     <template id="gameCardTemplate">
