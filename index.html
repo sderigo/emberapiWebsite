@@ -6,18 +6,17 @@
     <title>EmberAPI | Roblox Portfolio</title>
     <meta
       name="description"
-      content="A polished Roblox portfolio for EmberAPI featuring live player counts, visit totals, and selected projects."
+      content="A live Roblox development portfolio featuring selected games, current player counts, and lifetime visits."
     />
-    <meta name="theme-color" content="#1a1714" />
+    <meta name="theme-color" content="#0b0a09" />
 
-    <!-- Open Graph / LinkedIn / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="EmberAPI" />
     <meta property="og:url" content="https://www.emberapi.net/" />
     <meta property="og:title" content="EmberAPI | Roblox Portfolio" />
     <meta
       property="og:description"
-      content="A polished Roblox portfolio for EmberAPI featuring live player counts, visit totals, and selected projects."
+      content="A live Roblox development portfolio featuring selected games, current player counts, and lifetime visits."
     />
     <meta property="og:image" content="https://www.emberapi.net/og-image.png" />
     <meta property="og:image:secure_url" content="https://www.emberapi.net/og-image.png" />
@@ -26,13 +25,12 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="Ember Games logo" />
 
-    <!-- Twitter / X Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@EmberAPI" />
     <meta name="twitter:title" content="EmberAPI | Roblox Portfolio" />
     <meta
       name="twitter:description"
-      content="A polished Roblox portfolio for EmberAPI featuring live player counts, visit totals, and selected projects."
+      content="A live Roblox development portfolio featuring selected games, current player counts, and lifetime visits."
     />
     <meta name="twitter:image" content="https://www.emberapi.net/og-image.png" />
     <meta name="twitter:image:alt" content="Ember Games logo" />
@@ -41,183 +39,261 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Fragment+Mono&amp;family=Funnel+Display:wght@400;500;600;700&amp;display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=20260710n" />
   </head>
   <body>
-    <div class="page-shell">
-      <div class="ember-backdrop" id="emberBackdrop" aria-hidden="true">
-        <canvas class="ember-canvas" id="emberCanvas"></canvas>
-        <div class="hero-glow"></div>
-      </div>
+    <a class="skip-link" href="#selectedWork">Skip to featured games</a>
 
+    <div class="page-shell" id="pageShell">
       <header class="site-header">
-        <a class="brand-mark" href="#top">EmberAPI</a>
-        <div class="header-meta">
-          <span class="status-dot"></span>
-          <span id="refreshState" aria-live="polite">Syncing live Roblox stats</span>
+        <a class="brand-mark" href="#top" aria-label="EmberAPI home">
+          <span class="brand-glyph" aria-hidden="true"></span>
+          <span>EmberAPI</span>
+        </a>
+
+        <nav class="header-nav" aria-label="Primary navigation">
+          <a
+            class="header-nav-link header-nav-link-work"
+            href="#selectedWork"
+            aria-label="View featured games"
+            title="Featured games"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z" fill="currentColor" />
+            </svg>
+            <span class="header-nav-label">Featured games</span>
+          </a>
+          <a
+            class="header-nav-link"
+            href="https://www.roblox.com/users/69326238/profile"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Open EmberAPI's Roblox profile"
+            title="Roblox"
+          >
+            <img src="./roblox-mark.svg?v=20260310b" alt="" />
+          </a>
+          <a
+            class="header-nav-link"
+            href="https://x.com/EmberAPI"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Open EmberAPI on X"
+            title="X"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18.9 2H22l-6.76 7.73L23.2 22h-6.24l-4.89-7.17L5.8 22H2.7l7.23-8.26L.8 2h6.4l4.42 6.62L18.9 2Zm-1.09 18h1.72L6.27 3.9H4.43l13.38 16.1Z" fill="currentColor" />
+            </svg>
+          </a>
+          <a
+            class="header-nav-link"
+            href="https://www.linkedin.com/in/samuel-derigo-75a6b1294/"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Open Samuel Derigo on LinkedIn"
+            title="LinkedIn"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5.34 3.5A2.34 2.34 0 1 1 .66 3.5a2.34 2.34 0 0 1 4.68 0ZM1.06 7.25h3.88V19H1.06V7.25Zm6.3 0h3.72v1.61h.05c.52-.98 1.78-2.02 3.67-2.02 3.93 0 4.66 2.59 4.66 5.95V19h-3.88v-5.51c0-1.31-.02-3-1.83-3-1.83 0-2.11 1.43-2.11 2.91V19H7.36V7.25Z" fill="currentColor" />
+            </svg>
+          </a>
+        </nav>
+
+        <div class="sync-state hidden" id="syncState">
+          <span class="sync-light" aria-hidden="true"></span>
+          <span id="refreshState" aria-live="polite">Syncing live data</span>
         </div>
       </header>
 
       <main id="top">
-        <section class="hero section-block" id="heroSection">
-
+        <section class="hero" id="heroSection">
           <div class="hero-copy">
-            <p class="eyebrow hero-reveal" data-reveal-delay="0">Roblox Portfolio</p>
-            <h1 class="hero-reveal" data-reveal-delay="1"><span class="hero-word">Roblox</span> <span class="hero-word">games</span> <span class="hero-word">I&apos;ve</span> <span class="hero-word">helped</span> <span class="hero-word">build</span> <span class="hero-word">and</span> <span class="hero-word">grow.</span></h1>
-            <p class="hero-text hero-reveal" data-reveal-delay="2" id="heroDescription">
-              A live portfolio of projects spanning scripting, systems design, and long-term game support.
+            <p class="hero-kicker">Roblox game developer</p>
+            <h1>Games I&apos;ve <span>helped build.</span></h1>
+            <p class="hero-text" id="heroDescription">
+              A selection of live Roblox games I&apos;ve worked on as a programmer, building gameplay features, shipping updates, and supporting ongoing development.
             </p>
-            <div class="hero-actions hero-reveal" data-reveal-delay="3">
-              <a class="button button-primary hero-primary-button" href="#gamesGrid" aria-label="View projects">
-                <span>Projects</span>
+
+            <div class="hero-actions">
+              <a class="button button-primary" href="#selectedWork">
+                <span>Explore the work</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h14M14 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" />
+                </svg>
               </a>
               <a
-                class="button button-secondary social-button icon-button tooltip-button roblox-button"
+                class="button button-icon"
                 href="https://www.roblox.com/users/69326238/profile"
                 target="_blank"
                 rel="noreferrer"
-                aria-label="Roblox Profile"
-                title="Roblox Profile"
-                data-tooltip="Roblox Profile"
+                aria-label="Open EmberAPI's Roblox profile"
               >
                 <img src="./roblox-mark.svg?v=20260310b" alt="" />
-                <span class="icon-tooltip" aria-hidden="true">Roblox Profile</span>
               </a>
               <a
-                class="button button-secondary social-button icon-button tooltip-button x-button"
+                class="button button-icon"
                 href="https://x.com/EmberAPI"
                 target="_blank"
                 rel="noreferrer"
-                aria-label="EmberAPI on X"
-                title="X Profile"
-                data-tooltip="X Profile"
+                aria-label="Open EmberAPI on X"
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="M18.9 2H22l-6.76 7.73L23.2 22h-6.24l-4.89-7.17L5.8 22H2.7l7.23-8.26L.8 2h6.4l4.42 6.62L18.9 2Zm-1.09 18h1.72L6.27 3.9H4.43l13.38 16.1Z"
-                    fill="currentColor"
-                  ></path>
+                  <path d="M18.9 2H22l-6.76 7.73L23.2 22h-6.24l-4.89-7.17L5.8 22H2.7l7.23-8.26L.8 2h6.4l4.42 6.62L18.9 2Zm-1.09 18h1.72L6.27 3.9H4.43l13.38 16.1Z" fill="currentColor" />
                 </svg>
-                <span class="icon-tooltip" aria-hidden="true">X Profile</span>
+              </a>
+              <a
+                class="button button-icon"
+                href="https://www.linkedin.com/in/samuel-derigo-75a6b1294/"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open Samuel Derigo on LinkedIn"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5.34 3.5A2.34 2.34 0 1 1 .66 3.5a2.34 2.34 0 0 1 4.68 0ZM1.06 7.25h3.88V19H1.06V7.25Zm6.3 0h3.72v1.61h.05c.52-.98 1.78-2.02 3.67-2.02 3.93 0 4.66 2.59 4.66 5.95V19h-3.88v-5.51c0-1.31-.02-3-1.83-3-1.83 0-2.11 1.43-2.11 2.91V19H7.36V7.25Z" fill="currentColor" />
+                </svg>
               </a>
             </div>
           </div>
 
-          <aside class="totals-panel hero-reveal" data-reveal-delay="4">
-            <div class="panel-label-row">
-              <span class="panel-label">Live Overview</span>
-              <span class="pill">Updates every 90 seconds</span>
+          <div class="hero-stage" id="heroStage">
+            <div class="build-deck" id="heroDeck">
+              <div class="deck-pane deck-pane-rear deck-pane-rear-far" aria-hidden="true">
+                <div class="deck-bar"><span></span><span></span><span></span></div>
+                <img id="heroDeckImageThird" alt="" />
+              </div>
+              <div class="deck-pane deck-pane-rear deck-pane-rear-near" aria-hidden="true">
+                <div class="deck-bar"><span></span><span></span><span></span></div>
+                <img id="heroDeckImageSecond" alt="" />
+              </div>
+              <button
+                class="deck-pane deck-pane-front"
+                id="heroGameButton"
+                type="button"
+                aria-label="Open featured game details"
+                disabled
+              >
+                <span class="deck-toolbar">
+                  <span class="deck-toolbar-status">
+                    <span class="deck-live-light" aria-hidden="true"></span>
+                    <span id="heroSpotlightStatus">Live game</span>
+                  </span>
+                  <span id="heroSpotlightYear">----</span>
+                </span>
+                <span class="deck-image-wrap">
+                  <img id="heroSpotlightImage" alt="" />
+                  <span class="deck-corner deck-corner-top" aria-hidden="true"></span>
+                  <span class="deck-corner deck-corner-bottom" aria-hidden="true"></span>
+                </span>
+                <span class="deck-caption">
+                  <span class="deck-title-group">
+                    <strong id="heroSpotlightTitle">Syncing portfolio</strong>
+                    <span id="heroSpotlightOwner">Roblox experience</span>
+                  </span>
+                  <span class="deck-telemetry">
+                    <span><strong id="heroSpotlightCcu">--</strong> playing</span>
+                    <span><strong id="heroSpotlightVisits">--</strong> visits</span>
+                  </span>
+                </span>
+              </button>
             </div>
-            <div class="totals-grid">
-              <article class="metric-card">
-                <span class="metric-label">Concurrent Players</span>
-                <strong class="metric-value" id="totalCcu">--</strong>
-                <span class="metric-detail">Across this featured lineup</span>
-              </article>
-              <article class="metric-card">
-                <span class="metric-label">Total Visits</span>
-                <strong class="metric-value" id="totalVisits">--</strong>
-                <span class="metric-detail">Lifetime visits across featured titles</span>
-              </article>
-              <article class="metric-card">
-                <span class="metric-label">Featured Games</span>
-                <strong class="metric-value" id="gameCount">--</strong>
-                <span class="metric-detail">Curated projects on this page</span>
-              </article>
-              <article class="metric-card accent-card">
-                <span class="metric-label">Last Sync</span>
-                <strong class="metric-value" id="lastRefresh">Syncing</strong>
-                <span class="metric-detail">Most recent live stats update</span>
-              </article>
-            </div>
-          </aside>
+            <p class="deck-hint"><span aria-hidden="true">→</span> Select to view game details</p>
+          </div>
 
-          <div class="scroll-cue hero-reveal" data-reveal-delay="5" aria-hidden="true">
-            <span class="scroll-cue-label">Scroll to explore</span>
-            <svg class="scroll-cue-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 5v14M5 12l7 7 7-7"/>
-            </svg>
+          <div class="signal-rail" aria-label="Live portfolio overview">
+            <div class="signal-rail-label">
+              <span class="sync-light" aria-hidden="true"></span>
+              Live network
+            </div>
+            <div class="signal-item"><strong id="totalCcu">--</strong><span>players online</span></div>
+            <div class="signal-item"><strong id="totalVisits">--</strong><span>lifetime visits</span></div>
+            <div class="signal-item"><strong id="gameCount">--</strong><span>selected games</span></div>
+            <div class="signal-item signal-item-time"><strong id="lastRefresh">Syncing</strong><span>last refresh</span></div>
           </div>
         </section>
 
-        <section class="section-block content-section">
-          <div class="section-heading scroll-reveal">
-            <div>
-              <p class="eyebrow">Featured Games</p>
-              <h2>Recent and live projects</h2>
-            </div>
+        <section class="work-section" id="selectedWork">
+          <div class="work-heading">
+            <h2>Featured games</h2>
           </div>
 
           <div class="error-banner hidden" id="errorBanner" aria-live="polite"></div>
-          <div class="games-grid" id="gamesGrid"></div>
+          <div class="games-grid" id="gamesGrid" aria-busy="true"></div>
+          <div class="games-expander hidden" id="gamesExpander">
+            <button
+              class="games-toggle"
+              id="gamesToggle"
+              type="button"
+              aria-expanded="false"
+              aria-controls="gamesGrid"
+            >
+              <span class="games-toggle-count" id="gamesToggleCount" aria-hidden="true">MORE</span>
+              <span class="games-toggle-copy">
+                <strong id="gamesToggleLabel">View all games</strong>
+                <span id="gamesToggleDetail">Open the complete lineup</span>
+              </span>
+              <span class="games-toggle-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="m5 9 7 7 7-7" fill="none" stroke="currentColor" stroke-width="2" /></svg>
+              </span>
+            </button>
+          </div>
         </section>
       </main>
 
       <footer class="site-footer">
-        <div class="footer-inner">
-          <span class="footer-text">&copy; 2026 EmberAPI</span>
-          <nav class="footer-links">
-            <a class="footer-link" href="https://www.roblox.com/users/69326238/profile" target="_blank" rel="noreferrer">Roblox</a>
-            <a class="footer-link" href="https://x.com/EmberAPI" target="_blank" rel="noreferrer">X / Twitter</a>
-          </nav>
+        <div class="footer-statement">
+          <span class="brand-glyph" aria-hidden="true"></span>
+          <strong>Built for play.<br />Maintained for the long run.</strong>
+        </div>
+        <div class="footer-meta">
+          <span>&copy; 2026 EmberAPI</span>
+          <a href="https://www.roblox.com/users/69326238/profile" target="_blank" rel="noreferrer">Roblox</a>
+          <a href="https://x.com/EmberAPI" target="_blank" rel="noreferrer">X / Twitter</a>
+          <a href="https://www.linkedin.com/in/samuel-derigo-75a6b1294/" target="_blank" rel="noreferrer">LinkedIn</a>
         </div>
       </footer>
     </div>
 
     <template id="gameCardTemplate">
       <article class="game-card">
+        <div class="game-rank" aria-hidden="true">--</div>
+
         <div class="game-media-wrap">
           <div class="game-media-track">
-            <img class="game-media game-media-current" alt="" loading="lazy" />
-            <img class="game-media game-media-next" alt="" loading="lazy" />
+            <img class="game-media game-media-current" alt="" loading="lazy" decoding="async" />
+            <img class="game-media game-media-next" alt="" aria-hidden="true" decoding="async" />
+          </div>
+          <div class="game-media-overlay">
+            <span class="game-overlay-badge"></span>
+            <span class="game-overlay-year"></span>
+            <span class="game-overlay-title visually-hidden"></span>
           </div>
           <div class="game-media-controls">
             <button class="game-media-control game-media-control-prev" type="button" aria-label="Previous thumbnail">
-              <span>&lsaquo;</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" /></svg>
             </button>
             <button class="game-media-control game-media-control-next" type="button" aria-label="Next thumbnail">
-              <span>&rsaquo;</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" /></svg>
             </button>
-          </div>
-          <div class="game-media-glow"></div>
-          <div class="game-media-overlay">
-            <div class="game-media-topline">
-              <span class="card-badge game-overlay-badge"></span>
-              <span class="card-year game-overlay-year"></span>
-            </div>
-            <div class="game-media-bottomline">
-              <h3 class="game-overlay-title"></h3>
-              <span class="game-overlay-action" aria-hidden="true">
-                <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M8 6.5v11l9-5.5-9-5.5Z" fill="currentColor"></path>
-                </svg>
-              </span>
-            </div>
           </div>
         </div>
 
         <div class="game-content">
-          <div class="card-topline">
-            <span class="card-badge game-status"></span>
-            <span class="card-year game-year"></span>
+          <div class="game-meta-line">
+            <span class="game-status"></span>
+            <span class="game-year"></span>
+            <span class="game-owner"></span>
           </div>
 
-          <div class="title-row">
-            <h3 class="game-heading"></h3>
-            <a class="game-link" target="_blank" rel="noreferrer">
-              <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M8 6.5v11l9-5.5-9-5.5Z" fill="currentColor"></path>
-              </svg>
-              <span>Open</span>
-            </a>
-          </div>
+          <h3 class="game-heading"></h3>
+          <p class="game-genre"></p>
+          <div class="game-tags" aria-label="Game categories"></div>
 
           <div class="game-stats">
             <div class="inline-stat">
-              <span class="inline-stat-label">Live CCU</span>
+              <span class="inline-stat-label">Playing now</span>
               <strong class="inline-stat-value game-ccu"></strong>
             </div>
             <div class="inline-stat">
@@ -229,29 +305,67 @@
               <strong class="inline-stat-value game-favorites"></strong>
             </div>
           </div>
+
+          <div class="game-actions">
+            <button class="game-details-button" type="button">
+              <span>View details</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M14 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" /></svg>
+            </button>
+            <a class="game-link" target="_blank" rel="noreferrer">
+              <span>Play on Roblox</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6.5v11l9-5.5-9-5.5Z" fill="currentColor" /></svg>
+            </a>
+          </div>
         </div>
       </article>
     </template>
 
     <div class="modal-backdrop" id="gameModalBackdrop"></div>
-    <div class="game-modal" id="gameModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalGameTitle">
+    <div
+      class="game-modal"
+      id="gameModal"
+      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modalGameTitle"
+    >
       <div class="game-modal-shell">
-        <button class="modal-close" id="modalCloseButton" type="button" aria-label="Close details">
-          <span>&times;</span>
-        </button>
+        <div class="modal-toolbar">
+          <span>Game details</span>
+          <button class="modal-close" id="modalCloseButton" type="button" aria-label="Close details">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" /></svg>
+          </button>
+        </div>
 
         <div class="game-modal-panel">
-          <div class="modal-media-wrap">
-            <img class="modal-media" id="modalGameImage" alt="" />
-            <div class="detail-tags modal-media-tags" id="modalGameTags"></div>
-            <span class="card-year modal-media-year" id="modalGameYear"></span>
+          <div class="modal-visual">
+            <div class="modal-media-wrap">
+              <img class="modal-media" id="modalGameImage" alt="" />
+              <div class="modal-media-meta">
+                <div class="detail-tags" id="modalGameTags"></div>
+                <span class="modal-media-year" id="modalGameYear"></span>
+              </div>
+            </div>
+
+            <div class="modal-actions">
+              <a class="button button-primary" id="modalGameLink" target="_blank" rel="noreferrer">
+                <span>Play on Roblox</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6.5v11l9-5.5-9-5.5Z" fill="currentColor" /></svg>
+              </a>
+              <a class="button button-secondary" id="modalCreatorLink" target="_blank" rel="noreferrer">
+                <span>Creator page</span>
+              </a>
+              <button class="button button-secondary" id="modalCopyLinkButton" type="button">
+                <span class="button-label">Copy game link</span>
+              </button>
+            </div>
           </div>
 
           <div class="modal-copy">
             <h2 class="modal-title" id="modalGameTitle"></h2>
 
             <div class="modal-detail-row">
-              <span class="detail-label">Published By</span>
+              <span class="detail-label">Published by</span>
               <a class="detail-owner" id="modalGameOwner" target="_blank" rel="noreferrer"></a>
             </div>
 
@@ -259,7 +373,7 @@
 
             <div class="modal-stats">
               <div class="inline-stat">
-                <span class="inline-stat-label">Live CCU</span>
+                <span class="inline-stat-label">Playing now</span>
                 <strong class="inline-stat-value" id="modalGameCcu"></strong>
               </div>
               <div class="inline-stat">
@@ -271,33 +385,11 @@
                 <strong class="inline-stat-value" id="modalGameFavorites"></strong>
               </div>
             </div>
-
-            <div class="modal-actions">
-              <a class="button button-primary" id="modalGameLink" target="_blank" rel="noreferrer">
-                <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M8 6.5v11l9-5.5-9-5.5Z" fill="currentColor"></path>
-                </svg>
-                <span>Open on Roblox</span>
-              </a>
-              <a class="button button-secondary modal-secondary-action" id="modalCreatorLink" target="_blank" rel="noreferrer">
-                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M14 5h5v5h-2V8.41l-6.29 6.3-1.42-1.42L15.59 7H14V5Z" fill="currentColor"></path>
-                  <path d="M6 7h5v2H8v7h7v-3h2v5H6V7Z" fill="currentColor"></path>
-                </svg>
-                <span>View Creator Page</span>
-              </a>
-              <button class="button button-secondary modal-secondary-action" id="modalCopyLinkButton" type="button">
-                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M9 9h10v11H9V9Zm2 2v7h6v-7h-6Z" fill="currentColor"></path>
-                  <path d="M5 4h10v3h-2V6H7v9H6a1 1 0 0 1-1-1V4Z" fill="currentColor"></path>
-                </svg>
-                <span class="button-label">Copy Link</span>
-              </button>
-            </div>
           </div>
         </div>
       </div>
     </div>
-    <script src="./script.js?v=20260310a" type="module"></script>
+
+    <script src="./script.js?v=20260710i" type="module"></script>
   </body>
 </html>

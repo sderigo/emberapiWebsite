@@ -1,9 +1,7 @@
 import PORTFOLIO_DATA from "./data/portfolio.json" with { type: "json" };
 
 const REFRESH_INTERVAL_MS = 90_000;
-const THUMBNAIL_CYCLE_INTERVAL_MS = 8_600;
-const THUMBNAIL_INITIAL_OFFSET_MS = 3_200;
-const THUMBNAIL_SLIDE_DURATION_MS = 480;
+const THUMBNAIL_SLIDE_DURATION_MS = 440;
 const THUMBNAIL_SWIPE_THRESHOLD_PX = 40;
 const ROPROXY_ENDPOINTS = {
   universeByPlace: "https://apis.roproxy.com/universes/v1/places",
@@ -14,7 +12,13 @@ const ROPROXY_ENDPOINTS = {
 
 const cardTemplate = document.querySelector("#gameCardTemplate");
 const gamesGrid = document.querySelector("#gamesGrid");
+const gamesExpander = document.querySelector("#gamesExpander");
+const gamesToggle = document.querySelector("#gamesToggle");
+const gamesToggleCount = document.querySelector("#gamesToggleCount");
+const gamesToggleLabel = document.querySelector("#gamesToggleLabel");
+const gamesToggleDetail = document.querySelector("#gamesToggleDetail");
 const errorBanner = document.querySelector("#errorBanner");
+const syncState = document.querySelector("#syncState");
 const refreshState = document.querySelector("#refreshState");
 const heroDescription = document.querySelector("#heroDescription");
 const totalCcu = document.querySelector("#totalCcu");
@@ -38,16 +42,23 @@ const modalGameLink = document.querySelector("#modalGameLink");
 const modalCreatorLink = document.querySelector("#modalCreatorLink");
 const modalCopyLinkButton = document.querySelector("#modalCopyLinkButton");
 const modalCopyLinkLabel = modalCopyLinkButton.querySelector(".button-label");
-
-const heroSection = document.querySelector("#heroSection");
-const emberCanvas = document.querySelector("#emberCanvas");
-const heroCopy = document.querySelector(".hero-copy");
-const heroTotalsPanel = document.querySelector(".totals-panel");
-const heroScrollCue = document.querySelector(".scroll-cue");
+const pageShell = document.querySelector("#pageShell");
+const heroStage = document.querySelector("#heroStage");
+const heroDeck = document.querySelector("#heroDeck");
+const heroGameButton = document.querySelector("#heroGameButton");
+const heroSpotlightImage = document.querySelector("#heroSpotlightImage");
+const heroSpotlightStatus = document.querySelector("#heroSpotlightStatus");
+const heroSpotlightYear = document.querySelector("#heroSpotlightYear");
+const heroSpotlightTitle = document.querySelector("#heroSpotlightTitle");
+const heroSpotlightOwner = document.querySelector("#heroSpotlightOwner");
+const heroSpotlightCcu = document.querySelector("#heroSpotlightCcu");
+const heroSpotlightVisits = document.querySelector("#heroSpotlightVisits");
+const heroDeckImageSecond = document.querySelector("#heroDeckImageSecond");
+const heroDeckImageThird = document.querySelector("#heroDeckImageThird");
 
 const reducedMotionMediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-const touchViewportMediaQuery = window.matchMedia("(hover: none) and (pointer: coarse)");
-const narrowViewportMediaQuery = window.matchMedia("(max-width: 760px)");
+const finePointerMediaQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+const defaultVisibleGameCount = 4;
 
 const compactNumberFormatter = new Intl.NumberFormat("en-US", {
   notation: "compact",
@@ -63,19 +74,23 @@ let overviewState = {
   gameCount: 0
 };
 let hasRenderedGames = false;
+let areAllGamesVisible = false;
+const gameRevealAnimations = new WeakMap();
 let currentGamesByUniverseId = new Map();
 let activeModalUniverseId = null;
 let modalCloseTimeoutId = null;
 let copyLinkResetTimeoutId = null;
-let preloadedThumbnailUrls = new Set();
+let modalTriggerElement = null;
+let heroFeaturedGame = null;
+let isRefreshing = false;
 let preloadedThumbnailPromises = new Map();
 let thumbnailTrackStates = new WeakMap();
-let activeThumbnailTracks = new Set();
 
 const clonePortfolioData = () => JSON.parse(JSON.stringify(PORTFOLIO_DATA));
 
-const setRefreshMessage = (message) => {
+const setRefreshMessage = (message, isError = false) => {
   refreshState.textContent = message;
+  syncState.classList.toggle("hidden", !isError);
 };
 
 const showError = (message) => {
@@ -108,6 +123,11 @@ const relativeRefreshLabel = (date) => {
 };
 
 const animateCounter = (element, fromValue, toValue, formatter) => {
+  if (reducedMotionMediaQuery.matches) {
+    element.textContent = formatter(toValue);
+    return;
+  }
+
   const duration = 900;
   const startTime = performance.now();
 
@@ -179,13 +199,14 @@ const mergePortfolioData = (games, liveGameDetails, liveIcons, liveThumbnails, u
     .map((game, index) => {
       const universeId = universeIds[index];
       const details = detailsByUniverse.get(universeId) ?? {};
-      const fallbackImageUrl = iconsByUniverse.get(universeId) ?? "";
+      const iconUrl = iconsByUniverse.get(universeId) ?? game.iconUrl ?? "";
       const imageUrls = thumbnailsByUniverse.get(universeId) ?? [];
 
       return {
         ...game,
         universeId,
-        imageUrls: imageUrls.length > 0 ? imageUrls : [fallbackImageUrl].filter(Boolean),
+        iconUrl,
+        imageUrls: imageUrls.length > 0 ? imageUrls : [iconUrl].filter(Boolean),
         name: details.name ?? game.title ?? "Untitled Game",
         description: details.description ?? "",
         visits: details.visits ?? 0,
@@ -202,6 +223,29 @@ const mergePortfolioData = (games, liveGameDetails, liveIcons, liveThumbnails, u
     .sort((left, right) => right.playing - left.playing);
 };
 
+const updateHeroDeck = (games) => {
+  const [featuredGame, secondGame, thirdGame] = games;
+
+  if (!featuredGame) {
+    return;
+  }
+
+  heroFeaturedGame = featuredGame;
+  heroSpotlightImage.src = featuredGame.imageUrls[0] ?? "";
+  heroSpotlightImage.alt = `${featuredGame.name} gameplay thumbnail`;
+  heroSpotlightStatus.textContent = featuredGame.status ?? "Live game";
+  heroSpotlightYear.textContent = featuredGame.year ?? "Live";
+  heroSpotlightTitle.textContent = featuredGame.name;
+  heroSpotlightOwner.textContent = featuredGame.creatorName;
+  heroSpotlightCcu.textContent = formatCompactNumber(featuredGame.playing);
+  heroSpotlightVisits.textContent = formatCompactNumber(featuredGame.visits);
+  heroGameButton.disabled = false;
+  heroGameButton.setAttribute("aria-label", `Open details for ${featuredGame.name}`);
+
+  heroDeckImageSecond.src = secondGame?.imageUrls[0] ?? featuredGame.imageUrls[1] ?? "";
+  heroDeckImageThird.src = thirdGame?.imageUrls[0] ?? featuredGame.imageUrls[2] ?? "";
+};
+
 const updateOverview = (profile, games) => {
   const combinedCcu = games.reduce((sum, game) => sum + (game.playing ?? 0), 0);
   const combinedVisits = games.reduce((sum, game) => sum + (game.visits ?? 0), 0);
@@ -215,6 +259,7 @@ const updateOverview = (profile, games) => {
   animateCounter(gameCount, overviewState.gameCount, games.length, (value) => String(value));
   lastRefresh.textContent = relativeRefreshLabel(now);
   setRefreshMessage(`Live stats synced at ${syncTime}`);
+  updateHeroDeck(games);
   overviewState = {
     combinedCcu,
     combinedVisits,
@@ -222,7 +267,9 @@ const updateOverview = (profile, games) => {
   };
 };
 
-const buildTagItems = (game) => [game.status, game.genre, ...(game.tags ?? [])].filter(Boolean);
+const buildTagItems = (game) => Array.from(
+  new Set([game.status, game.genre, ...(game.tags ?? [])].filter(Boolean))
+);
 
 const renderTagItems = (container, game) => {
   container.innerHTML = "";
@@ -235,6 +282,20 @@ const renderTagItems = (container, game) => {
   });
 };
 
+const renderGameTags = (container, game) => {
+  container.innerHTML = "";
+
+  [...(game.tags ?? [])]
+    .filter(Boolean)
+    .slice(0, 4)
+    .forEach((tag) => {
+      const tagNode = document.createElement("span");
+      tagNode.className = "game-tag";
+      tagNode.textContent = tag;
+      container.appendChild(tagNode);
+    });
+};
+
 const getCreatorUrl = (game) => {
   if (!game.creatorId) {
     return game.gameUrl;
@@ -245,16 +306,6 @@ const getCreatorUrl = (game) => {
   }
 
   return `https://www.roblox.com/communities/${game.creatorId}`;
-};
-
-const preloadThumbnail = (url) => {
-  if (!url || preloadedThumbnailUrls.has(url)) {
-    return;
-  }
-
-  const image = new Image();
-  image.src = url;
-  preloadedThumbnailUrls.add(url);
 };
 
 const preloadThumbnailAsync = async (url) => {
@@ -271,7 +322,6 @@ const preloadThumbnailAsync = async (url) => {
     const image = new Image();
 
     image.onload = () => {
-      preloadedThumbnailUrls.add(url);
       resolve();
     };
 
@@ -282,7 +332,6 @@ const preloadThumbnailAsync = async (url) => {
     image.src = url;
 
     if (image.complete) {
-      preloadedThumbnailUrls.add(url);
       resolve();
     }
   });
@@ -307,7 +356,9 @@ const normalizeThumbnailFrames = (frames) => {
   return uniqueFrames;
 };
 
-const openGameModal = (game) => {
+const openGameModal = (game, triggerElement = null) => {
+  const wasOpen = gameModal.classList.contains("is-visible");
+
   if (modalCloseTimeoutId) {
     window.clearTimeout(modalCloseTimeoutId);
     modalCloseTimeoutId = null;
@@ -318,9 +369,13 @@ const openGameModal = (game) => {
     copyLinkResetTimeoutId = null;
   }
 
+  if (!wasOpen) {
+    modalTriggerElement = triggerElement ?? document.activeElement;
+  }
+
   activeModalUniverseId = game.universeId;
-  modalGameImage.src = game.imageUrls[0] ?? "";
-  modalGameImage.alt = `${game.name} thumbnail`;
+  modalGameImage.src = game.iconUrl || game.imageUrls[0] || "";
+  modalGameImage.alt = `${game.name} icon`;
   modalGameYear.textContent = game.year ?? "Live";
   modalGameTitle.textContent = game.name;
   modalGameDescription.textContent = game.description || "No public description is available for this experience right now.";
@@ -335,12 +390,17 @@ const openGameModal = (game) => {
   modalGameLink.href = game.gameUrl;
   modalCreatorLink.href = getCreatorUrl(game);
   gameModalPanel.dataset.accent = game.accent ?? "ember";
-  setModalCopyLinkLabel("Copy Link");
+  setModalCopyLinkLabel("Copy game link");
   renderTagItems(modalGameTags, game);
   gameModal.classList.add("is-visible");
   gameModalBackdrop.classList.add("is-visible");
   gameModal.setAttribute("aria-hidden", "false");
+  pageShell.inert = true;
   document.body.style.overflow = "hidden";
+
+  if (!wasOpen) {
+    window.requestAnimationFrame(() => modalCloseButton.focus());
+  }
 };
 
 const closeGameModal = () => {
@@ -352,28 +412,22 @@ const closeGameModal = () => {
   gameModal.classList.remove("is-visible");
   gameModalBackdrop.classList.remove("is-visible");
   gameModal.setAttribute("aria-hidden", "true");
+  pageShell.inert = false;
+
+  const focusTarget = modalTriggerElement;
+  modalTriggerElement = null;
+
   modalCloseTimeoutId = window.setTimeout(() => {
     document.body.style.overflow = "";
     modalCloseTimeoutId = null;
   }, 260);
+
+  if (focusTarget?.isConnected) {
+    window.requestAnimationFrame(() => focusTarget.focus());
+  }
 };
 
 const getThumbnailTrackState = (track) => thumbnailTrackStates.get(track);
-
-const clearThumbnailTrackTimeout = (track) => {
-  const state = getThumbnailTrackState(track);
-
-  if (!state?.timeoutId) {
-    return;
-  }
-
-  window.clearTimeout(state.timeoutId);
-  state.timeoutId = null;
-};
-
-const shouldAutoRotateThumbnails = () => {
-  return !reducedMotionMediaQuery.matches && !(touchViewportMediaQuery.matches && narrowViewportMediaQuery.matches);
-};
 
 const resetThumbnailGestureState = (track) => {
   const state = getThumbnailTrackState(track);
@@ -390,50 +444,6 @@ const resetThumbnailGestureState = (track) => {
   state.isPointerDown = false;
 };
 
-const pauseAndResetThumbnailRotation = (track) => {
-  const state = getThumbnailTrackState(track);
-
-  if (!state) {
-    return;
-  }
-
-  clearThumbnailTrackTimeout(track);
-  state.hasStartedRotation = false;
-};
-
-const stopThumbnailRotation = () => {
-  activeThumbnailTracks.forEach((track) => {
-    const state = getThumbnailTrackState(track);
-
-    if (state?.timeoutId) {
-      window.clearTimeout(state.timeoutId);
-      state.timeoutId = null;
-    }
-  });
-
-  activeThumbnailTracks.clear();
-};
-
-const scheduleThumbnailRotation = (track) => {
-  const state = getThumbnailTrackState(track);
-
-  if (!state || state.frames.length < 2 || !shouldAutoRotateThumbnails()) {
-    return;
-  }
-
-  clearThumbnailTrackTimeout(track);
-
-  const isInitialSchedule = !state.hasStartedRotation;
-  const delay = isInitialSchedule
-    ? THUMBNAIL_CYCLE_INTERVAL_MS + Math.floor(Math.random() * THUMBNAIL_INITIAL_OFFSET_MS)
-    : THUMBNAIL_CYCLE_INTERVAL_MS;
-
-  state.timeoutId = window.setTimeout(() => {
-    slideThumbnailTrack(track, 1);
-  }, delay);
-  state.hasStartedRotation = true;
-};
-
 const slideThumbnailTrack = async (track, direction) => {
   const state = getThumbnailTrackState(track);
 
@@ -443,13 +453,11 @@ const slideThumbnailTrack = async (track, direction) => {
 
   state.isAnimating = true;
   state.animationToken += 1;
-  clearThumbnailTrackTimeout(track);
 
   const token = state.animationToken;
   const { frames } = state;
   const currentIndex = state.currentIndex;
   const nextIndex = (currentIndex + direction + frames.length) % frames.length;
-  const afterNextIndex = (nextIndex + direction + frames.length) % frames.length;
   const currentImage = track.querySelector(".game-media-current");
   const nextImage = track.querySelector(".game-media-next");
   const directionClass = direction > 0 ? "is-sliding-forward" : "is-sliding-backward";
@@ -461,14 +469,12 @@ const slideThumbnailTrack = async (track, direction) => {
     return;
   }
 
-  preloadThumbnail(frames[afterNextIndex]);
-
   track.classList.add("is-resetting");
   track.classList.toggle("is-prepared-backward", direction < 0);
   track.classList.remove("is-sliding-forward", "is-sliding-backward");
 
   nextImage.src = frames[nextIndex];
-  nextImage.alt = currentImage.alt;
+  nextImage.alt = "";
   nextImage.style.zIndex = "1";
   currentImage.style.zIndex = "0";
 
@@ -494,7 +500,7 @@ const slideThumbnailTrack = async (track, direction) => {
 
     track.classList.add("is-resetting");
     currentImage.src = frames[nextIndex];
-    nextImage.src = frames[afterNextIndex];
+    nextImage.removeAttribute("src");
     track.classList.remove("is-sliding-forward", "is-sliding-backward");
     track.classList.remove("is-prepared-backward");
     nextImage.style.zIndex = "0";
@@ -508,49 +514,8 @@ const slideThumbnailTrack = async (track, direction) => {
       track.classList.remove("is-resetting");
       state.currentIndex = nextIndex;
       state.isAnimating = false;
-      scheduleThumbnailRotation(track);
     });
-  }, THUMBNAIL_SLIDE_DURATION_MS);
-};
-
-const startThumbnailRotation = () => {
-  stopThumbnailRotation();
-
-  if (!shouldAutoRotateThumbnails()) {
-    return;
-  }
-
-  const mediaTracks = Array.from(document.querySelectorAll(".game-media-track")).filter((node) => {
-    const state = getThumbnailTrackState(node);
-    return state && state.frames.length > 1;
-  });
-
-  mediaTracks.forEach((track) => {
-    activeThumbnailTracks.add(track);
-    scheduleThumbnailRotation(track);
-  });
-};
-
-const syncThumbnailRotationMode = () => {
-  if (!hasRenderedGames) {
-    return;
-  }
-
-  if (shouldAutoRotateThumbnails()) {
-    startThumbnailRotation();
-    return;
-  }
-
-  stopThumbnailRotation();
-};
-
-const addMediaQueryListener = (query, callback) => {
-  if (typeof query.addEventListener === "function") {
-    query.addEventListener("change", callback);
-    return;
-  }
-
-  query.addListener(callback);
+  }, reducedMotionMediaQuery.matches ? 0 : THUMBNAIL_SLIDE_DURATION_MS);
 };
 
 const attachThumbnailSwipeHandlers = (mediaWrap, mediaTrack) => {
@@ -617,13 +582,7 @@ const attachThumbnailSwipeHandlers = (mediaWrap, mediaTrack) => {
       return;
     }
 
-    state.suppressCardClick = true;
-    pauseAndResetThumbnailRotation(mediaTrack);
     slideThumbnailTrack(mediaTrack, deltaX < 0 ? 1 : -1);
-
-    window.setTimeout(() => {
-      state.suppressCardClick = false;
-    }, 280);
   };
 
   mediaWrap.addEventListener("pointerup", finishGesture);
@@ -644,39 +603,113 @@ const attachThumbnailSwipeHandlers = (mediaWrap, mediaTrack) => {
 
 const renderLoadingCards = (count) => {
   gamesGrid.innerHTML = "";
+  gamesGrid.setAttribute("aria-busy", "true");
+  gamesExpander.classList.add("hidden");
+  areAllGamesVisible = false;
 
   const fragment = document.createDocumentFragment();
 
   for (let index = 0; index < count; index += 1) {
     const node = cardTemplate.content.firstElementChild.cloneNode(true);
-    const overlayBadge = node.querySelector(".game-overlay-badge");
-    const overlayYear = node.querySelector(".game-overlay-year");
-    const overlayTitle = node.querySelector(".game-overlay-title");
-    const status = node.querySelector(".game-status");
-    const year = node.querySelector(".game-year");
-    const title = node.querySelector(".game-heading");
-    const link = node.querySelector(".game-link");
-    const ccu = node.querySelector(".game-ccu");
-    const visits = node.querySelector(".game-visits");
-    const favorites = node.querySelector(".game-favorites");
 
-    node.classList.add("loading", "is-visible");
-    overlayBadge.textContent = "Loading";
-    overlayYear.textContent = "--";
-    overlayTitle.textContent = "Loading lineup";
-    status.textContent = "Loading";
-    year.textContent = "--";
-    title.textContent = "Loading lineup";
-    link.querySelector("span").textContent = "Open";
-    ccu.textContent = "--";
-    visits.textContent = "--";
-    favorites.textContent = "--";
+    node.classList.add("loading");
+    node.setAttribute("aria-hidden", "true");
+    node.inert = true;
+    node.querySelector(".game-rank").textContent = String(index + 1).padStart(2, "0");
+    node.querySelector(".game-overlay-badge").textContent = "Loading";
+    node.querySelector(".game-overlay-year").textContent = "--";
+    node.querySelector(".game-overlay-title").textContent = "Loading lineup";
+    node.querySelector(".game-status").textContent = "Connecting";
+    node.querySelector(".game-year").textContent = "--";
+    node.querySelector(".game-owner").textContent = "Live Roblox data";
+    node.querySelector(".game-heading").textContent = "Loading lineup";
+    node.querySelector(".game-genre").textContent = "Fetching game details";
+    node.querySelector(".game-link span").textContent = "Play on Roblox";
+    node.querySelector(".game-ccu").textContent = "--";
+    node.querySelector(".game-visits").textContent = "--";
+    node.querySelector(".game-favorites").textContent = "--";
+    node.querySelector(".game-media-controls").hidden = true;
 
     fragment.appendChild(node);
   }
 
   gamesGrid.appendChild(fragment);
 };
+
+const revealGameCard = (node, revealIndex) => {
+  if (reducedMotionMediaQuery.matches || typeof node.animate !== "function") {
+    return;
+  }
+
+  gameRevealAnimations.get(node)?.cancel();
+
+  const cardHeight = node.getBoundingClientRect().height;
+  node.style.overflow = "hidden";
+
+  const animation = node.animate(
+    [
+      { height: "0px", opacity: 0, transform: "translateY(28px)" },
+      { height: `${cardHeight}px`, opacity: 1, transform: "translateY(0)" }
+    ],
+    {
+      duration: 520,
+      delay: revealIndex * 130,
+      easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+      fill: "both"
+    }
+  );
+
+  gameRevealAnimations.set(node, animation);
+  animation.finished.then(() => {
+    if (gameRevealAnimations.get(node) !== animation) {
+      return;
+    }
+
+    gameRevealAnimations.delete(node);
+    node.style.removeProperty("overflow");
+    animation.cancel();
+  }, () => {});
+};
+
+const updateGamesVisibility = ({ animate = false } = {}) => {
+  const cards = Array.from(gamesGrid.querySelectorAll(".game-card:not(.loading)"));
+  const extraGameCount = Math.max(0, cards.length - defaultVisibleGameCount);
+
+  cards.forEach((node, index) => {
+    const shouldHide = !areAllGamesVisible && index >= defaultVisibleGameCount;
+    const wasHidden = node.hidden;
+
+    if (shouldHide) {
+      gameRevealAnimations.get(node)?.cancel();
+      gameRevealAnimations.delete(node);
+      node.style.removeProperty("overflow");
+    }
+
+    node.hidden = shouldHide;
+    node.inert = shouldHide;
+
+    if (animate && wasHidden && !shouldHide) {
+      revealGameCard(node, index - defaultVisibleGameCount);
+    }
+  });
+
+  gamesExpander.classList.toggle("hidden", extraGameCount === 0);
+  gamesToggle.setAttribute("aria-expanded", String(areAllGamesVisible));
+  gamesToggle.setAttribute(
+    "aria-label",
+    areAllGamesVisible ? "Show fewer games" : "View all games"
+  );
+  gamesToggleCount.textContent = areAllGamesVisible ? "LESS" : "MORE";
+  gamesToggleLabel.textContent = areAllGamesVisible ? "Show fewer games" : "View all games";
+  gamesToggleDetail.textContent = areAllGamesVisible
+    ? "Return to the highlights"
+    : "Open the complete lineup";
+};
+
+gamesToggle.addEventListener("click", () => {
+  areAllGamesVisible = !areAllGamesVisible;
+  updateGamesVisibility({ animate: areAllGamesVisible });
+});
 
 const renderGames = (games) => {
   gamesGrid.innerHTML = "";
@@ -697,7 +730,12 @@ const renderGames = (games) => {
     const overlayTitle = node.querySelector(".game-overlay-title");
     const status = node.querySelector(".game-status");
     const year = node.querySelector(".game-year");
+    const rank = node.querySelector(".game-rank");
+    const owner = node.querySelector(".game-owner");
     const title = node.querySelector(".game-heading");
+    const genre = node.querySelector(".game-genre");
+    const tags = node.querySelector(".game-tags");
+    const detailsButton = node.querySelector(".game-details-button");
     const link = node.querySelector(".game-link");
     const ccu = node.querySelector(".game-ccu");
     const visits = node.querySelector(".game-visits");
@@ -705,47 +743,39 @@ const renderGames = (games) => {
 
     node.dataset.universeId = String(game.universeId);
     node.dataset.accent = game.accent ?? "ember";
-    node.style.transitionDelay = `${index * 80}ms`;
-    node.tabIndex = 0;
-    node.setAttribute("role", "button");
-    node.setAttribute("aria-label", `Open details for ${game.name}`);
 
     const frames = normalizeThumbnailFrames(game.imageUrls);
 
     currentMedia.src = frames[0] ?? "";
     currentMedia.alt = `${game.name} thumbnail`;
-    nextMedia.src = frames[1] ?? frames[0] ?? "";
-    nextMedia.alt = `${game.name} thumbnail`;
+    nextMedia.removeAttribute("src");
+    nextMedia.alt = "";
     mediaControls.hidden = frames.length < 2;
-
-    frames.forEach((imageUrl, imageIndex) => {
-      if (imageIndex < 3) {
-        preloadThumbnail(imageUrl);
-      }
-    });
 
     thumbnailTrackStates.set(mediaTrack, {
       animationToken: 0,
       currentIndex: 0,
       frames,
-      hasStartedRotation: false,
       isAnimating: false,
       isPointerDown: false,
       pointerDeltaX: 0,
       pointerDeltaY: 0,
       pointerId: null,
       pointerStartX: 0,
-      pointerStartY: 0,
-      suppressCardClick: false,
-      timeoutId: null
+      pointerStartY: 0
     });
 
+    rank.textContent = String(index + 1).padStart(2, "0");
     overlayBadge.textContent = game.status ?? "Live";
     overlayYear.textContent = game.year ?? "Live";
     overlayTitle.textContent = game.name;
     status.textContent = game.status ?? "Live";
     year.textContent = game.year ?? "Live";
+    owner.textContent = game.creatorName;
     title.textContent = game.name;
+    genre.textContent = game.genre ?? "Roblox experience";
+    renderGameTags(tags, game);
+    detailsButton.setAttribute("aria-label", `View details for ${game.name}`);
     link.href = game.gameUrl;
     link.setAttribute("aria-label", `Open ${game.name} on Roblox`);
     ccu.textContent = formatCompactNumber(game.playing);
@@ -757,61 +787,24 @@ const renderGames = (games) => {
 
     attachThumbnailSwipeHandlers(mediaWrap, mediaTrack);
 
-    node.addEventListener("click", (event) => {
-      const state = getThumbnailTrackState(mediaTrack);
-
-      if (state?.suppressCardClick) {
-        event.preventDefault();
-        state.suppressCardClick = false;
-        return;
-      }
-
-      openGameModal(game);
+    detailsButton.addEventListener("click", () => {
+      openGameModal(currentGamesByUniverseId.get(game.universeId) ?? game, detailsButton);
     });
 
-    node.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") {
-        return;
-      }
-
-      event.preventDefault();
-      openGameModal(game);
-    });
-
-    link.addEventListener("click", (event) => {
-      event.stopPropagation();
-    });
-
-    link.addEventListener("keydown", (event) => {
-      event.stopPropagation();
-    });
-
-    previousButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      pauseAndResetThumbnailRotation(mediaTrack);
+    previousButton.addEventListener("click", () => {
       slideThumbnailTrack(mediaTrack, -1);
     });
 
-    nextButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      pauseAndResetThumbnailRotation(mediaTrack);
+    nextButton.addEventListener("click", () => {
       slideThumbnailTrack(mediaTrack, 1);
-    });
-
-    previousButton.addEventListener("keydown", (event) => {
-      event.stopPropagation();
-    });
-
-    nextButton.addEventListener("keydown", (event) => {
-      event.stopPropagation();
     });
 
     fragment.appendChild(node);
   });
 
   gamesGrid.appendChild(fragment);
-  startThumbnailRotation();
-  observeGameCards();
+  gamesGrid.setAttribute("aria-busy", "false");
+  updateGamesVisibility();
 };
 
 const updateRenderedGames = (games) => {
@@ -821,7 +814,7 @@ const updateRenderedGames = (games) => {
   );
   const fragment = document.createDocumentFragment();
 
-  games.forEach((game) => {
+  games.forEach((game, index) => {
     const node = cardsByUniverseId.get(game.universeId);
 
     if (!node) {
@@ -831,28 +824,52 @@ const updateRenderedGames = (games) => {
     const ccu = node.querySelector(".game-ccu");
     const visits = node.querySelector(".game-visits");
     const favorites = node.querySelector(".game-favorites");
+    const detailsButton = node.querySelector(".game-details-button");
 
+    node.querySelector(".game-rank").textContent = String(index + 1).padStart(2, "0");
     ccu.textContent = formatCompactNumber(game.playing);
     visits.textContent = formatCompactNumber(game.visits);
     favorites.textContent = formatCompactNumber(game.favorites);
     ccu.title = formatFullNumber(game.playing);
     visits.title = formatFullNumber(game.visits);
     favorites.title = formatFullNumber(game.favorites);
+    detailsButton.setAttribute("aria-label", `View details for ${game.name}`);
 
     fragment.appendChild(node);
   });
 
   gamesGrid.appendChild(fragment);
+  updateGamesVisibility();
 
   if (activeModalUniverseId && currentGamesByUniverseId.has(activeModalUniverseId)) {
     openGameModal(currentGamesByUniverseId.get(activeModalUniverseId));
   }
 };
 
+const renderUnavailableState = () => {
+  const message = document.createElement("div");
+  const title = document.createElement("h3");
+  const detail = document.createElement("p");
+
+  message.className = "portfolio-empty";
+  title.textContent = "Live game data is unavailable.";
+  detail.textContent = "Refresh the page to try the Roblox connection again.";
+  message.append(title, detail);
+  gamesGrid.replaceChildren(message);
+  gamesGrid.setAttribute("aria-busy", "false");
+  gamesExpander.classList.add("hidden");
+};
+
 const refreshPortfolio = async () => {
+  if (isRefreshing) {
+    return;
+  }
+
+  isRefreshing = true;
+
   if (!portfolioData) {
     portfolioData = clonePortfolioData();
-    renderLoadingCards(portfolioData.games.length || 3);
+    renderLoadingCards(Math.min(portfolioData.games.length || 3, 3));
   }
 
   hideError();
@@ -888,6 +905,7 @@ const refreshPortfolio = async () => {
         return {
           ...existingGame,
           ...game,
+          iconUrl: game.iconUrl || existingGame.iconUrl,
           imageUrls: game.imageUrls.length > 0 ? game.imageUrls : existingGame.imageUrls
         };
       });
@@ -907,10 +925,13 @@ const refreshPortfolio = async () => {
       showError("Live Roblox stats are temporarily unavailable. Showing the most recent synced data.");
     } else {
       showError("Live Roblox stats could not be loaded right now. Refresh to try again.");
+      renderUnavailableState();
     }
 
-    setRefreshMessage("Unable to sync live Roblox stats");
+    setRefreshMessage("Live data connection failed", true);
     console.error(error);
+  } finally {
+    isRefreshing = false;
   }
 };
 
@@ -923,8 +944,40 @@ gameModal.addEventListener("click", (event) => {
 
 modalCloseButton.addEventListener("click", closeGameModal);
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && gameModal.classList.contains("is-visible")) {
+  if (!gameModal.classList.contains("is-visible")) {
+    return;
+  }
+
+  if (event.key === "Escape") {
     closeGameModal();
+    return;
+  }
+
+  if (event.key !== "Tab") {
+    return;
+  }
+
+  const focusableElements = Array.from(
+    gameModal.querySelectorAll(
+      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((element) => !element.hasAttribute("hidden"));
+
+  if (focusableElements.length === 0) {
+    event.preventDefault();
+    gameModal.focus();
+    return;
+  }
+
+  const firstElement = focusableElements[0];
+  const lastElement = focusableElements[focusableElements.length - 1];
+
+  if (event.shiftKey && document.activeElement === firstElement) {
+    event.preventDefault();
+    lastElement.focus();
+  } else if (!event.shiftKey && document.activeElement === lastElement) {
+    event.preventDefault();
+    firstElement.focus();
   }
 });
 
@@ -948,331 +1001,75 @@ modalCopyLinkButton.addEventListener("click", async () => {
   }
 
   copyLinkResetTimeoutId = window.setTimeout(() => {
-    setModalCopyLinkLabel("Copy Link");
+    setModalCopyLinkLabel("Copy game link");
     copyLinkResetTimeoutId = null;
   }, 1800);
 });
 
-addMediaQueryListener(reducedMotionMediaQuery, syncThumbnailRotationMode);
-addMediaQueryListener(touchViewportMediaQuery, syncThumbnailRotationMode);
-addMediaQueryListener(narrowViewportMediaQuery, syncThumbnailRotationMode);
-
-/* ── Hero Entry Reveal ── */
-
-const REVEAL_BASE_DELAY = 120;
-const WORD_STAGGER = 60;
-
-const revealHero = () => {
-  const reveals = document.querySelectorAll(".hero-reveal");
-
-  reveals.forEach((el) => {
-    const delayIndex = parseInt(el.dataset.revealDelay, 10) || 0;
-    const delay = delayIndex * REVEAL_BASE_DELAY;
-
-    const words = el.querySelectorAll(".hero-word");
-
-    if (words.length > 0) {
-      words.forEach((word, wi) => {
-        window.setTimeout(() => word.classList.add("is-revealed"), delay + wi * WORD_STAGGER);
-      });
-    } else {
-      window.setTimeout(() => el.classList.add("is-revealed"), delay);
-    }
-  });
-};
-
-/* ── Scroll Parallax & Fade ── */
-
-let heroHeight = 0;
-let heroScrollTicking = false;
-let scrollEffectsActive = false;
-
-const cacheHeroHeight = () => {
-  heroHeight = heroSection.offsetHeight;
-};
-
-const handleHeroScroll = () => {
-  heroScrollTicking = false;
-
-  if (reducedMotionMediaQuery.matches || !scrollEffectsActive) {
+heroGameButton.addEventListener("click", () => {
+  if (!heroFeaturedGame) {
     return;
   }
 
-  const scrollY = window.scrollY;
-  const deadzone = heroHeight * 0.25;
-  const effectiveScroll = Math.max(scrollY - deadzone, 0);
-  const progress = Math.min(effectiveScroll / (heroHeight * 0.55), 1);
-  const translateY = progress * -40;
-  const opacity = 1 - progress * 0.85;
-
-  heroCopy.style.transform = `translateY(${translateY}px)`;
-  heroCopy.style.opacity = opacity;
-  heroTotalsPanel.style.transform = `translateY(${translateY * 0.5}px)`;
-  heroTotalsPanel.style.opacity = opacity;
-
-  if (heroScrollCue) {
-    const cueOpacity = Math.max(1 - progress * 3, 0);
-    heroScrollCue.style.opacity = cueOpacity;
-  }
-};
-
-const initScrollEffects = () => {
-  cacheHeroHeight();
-
-  window.addEventListener("resize", cacheHeroHeight);
-
-  window.addEventListener("scroll", () => {
-    if (!heroScrollTicking) {
-      heroScrollTicking = true;
-      window.requestAnimationFrame(handleHeroScroll);
-    }
-  }, { passive: true });
-
-  window.setTimeout(() => {
-    scrollEffectsActive = true;
-    heroSection.classList.add("hero-scroll-active");
-  }, 700);
-};
-
-/* ── Card & Section IntersectionObserver ── */
-
-let cardObserver = null;
-
-const initCardObserver = () => {
-  cardObserver = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add("is-visible");
-        cardObserver.unobserve(entry.target);
-      }
-    });
-  }, {
-    threshold: 0.08,
-    rootMargin: "0px 0px -40px 0px"
-  });
-
-  document.querySelectorAll(".scroll-reveal").forEach((el) => {
-    cardObserver.observe(el);
-  });
-};
-
-const observeGameCards = () => {
-  if (!cardObserver) {
-    return;
-  }
-
-  gamesGrid.querySelectorAll(".game-card").forEach((card) => {
-    cardObserver.observe(card);
-  });
-};
-
-/* ── Ember Particle System ── */
-
-const EMBER_COLORS = ["#f97316", "#ffb366", "#ff8c3a", "#e8731a", "#ffd4a8"];
-const SMOKE_COLORS = ["#c8beb4", "#b0a89e", "#9e9690", "#d4ccc4", "#a89e94"];
-const EMBER_MAX_PARTICLES = 45;
-const SMOKE_MAX_PARTICLES = 18;
-const EMBER_FRAME_INTERVAL = 33; // ~30fps
-
-let isHeroVisible = true;
-let lastEmberFrameTime = 0;
-let emberParticles = [];
-let smokeParticles = [];
-let emberCtx = null;
-let emberDpr = 1;
-let emberWidth = 0;
-let emberHeight = 0;
-let emberAnimationId = null;
-
-const createEmberParticle = () => ({
-  x: Math.random() * emberWidth,
-  y: emberHeight + Math.random() * 20,
-  vx: (Math.random() - 0.5) * 0.3,
-  vy: -(0.3 + Math.random() * 0.6),
-  radius: 1.5 + Math.random() * 3.5,
-  maxOpacity: 0.3 + Math.random() * 0.5,
-  opacity: 0,
-  age: 0,
-  lifetime: 180 + Math.random() * 200,
-  drift: Math.random() * Math.PI * 2,
-  driftSpeed: 0.008 + Math.random() * 0.012,
-  driftAmplitude: 0.3 + Math.random() * 0.5,
-  color: EMBER_COLORS[Math.floor(Math.random() * EMBER_COLORS.length)]
+  openGameModal(
+    currentGamesByUniverseId.get(heroFeaturedGame.universeId) ?? heroFeaturedGame,
+    heroGameButton
+  );
 });
 
-const createSmokeParticle = () => ({
-  x: Math.random() * emberWidth,
-  y: -20 - Math.random() * 40,
-  vx: (Math.random() - 0.5) * 0.12,
-  vy: 0.12 + Math.random() * 0.2,
-  radius: 40 + Math.random() * 60,
-  maxOpacity: 0.03 + Math.random() * 0.04,
-  opacity: 0,
-  age: 0,
-  lifetime: 350 + Math.random() * 200,
-  drift: Math.random() * Math.PI * 2,
-  driftSpeed: 0.003 + Math.random() * 0.005,
-  driftAmplitude: 0.5 + Math.random() * 0.7,
-  growRate: 1 + Math.random() * 0.002,
-  color: SMOKE_COLORS[Math.floor(Math.random() * SMOKE_COLORS.length)]
-});
+let deckMotionFrame = null;
+let deckPointerX = 0;
+let deckPointerY = 0;
 
-const resizeEmberCanvas = () => {
-  emberDpr = Math.min(window.devicePixelRatio || 1, 2);
-  emberWidth = window.innerWidth;
-  emberHeight = window.innerHeight;
-  emberCanvas.width = emberWidth * emberDpr;
-  emberCanvas.height = emberHeight * emberDpr;
+const renderDeckMotion = () => {
+  deckMotionFrame = null;
+  heroDeck.style.setProperty("--deck-rx", `${deckPointerY * -4.5}deg`);
+  heroDeck.style.setProperty("--deck-ry", `${deckPointerX * 6.5}deg`);
+  heroDeck.style.setProperty("--deck-x", `${deckPointerX * 6}px`);
+  heroDeck.style.setProperty("--deck-y", `${deckPointerY * 5}px`);
+};
 
-  if (emberCtx) {
-    emberCtx.setTransform(emberDpr, 0, 0, emberDpr, 0, 0);
+const resetDeckMotion = () => {
+  deckPointerX = 0;
+  deckPointerY = 0;
+
+  if (!deckMotionFrame) {
+    deckMotionFrame = window.requestAnimationFrame(renderDeckMotion);
   }
 };
 
-const renderEmberFrame = (timestamp) => {
-  emberAnimationId = window.requestAnimationFrame(renderEmberFrame);
-
-  if (timestamp - lastEmberFrameTime < EMBER_FRAME_INTERVAL) {
+const handleDeckPointerMove = (event) => {
+  if (reducedMotionMediaQuery.matches || !finePointerMediaQuery.matches) {
     return;
   }
 
-  lastEmberFrameTime = timestamp;
+  const bounds = heroStage.getBoundingClientRect();
+  deckPointerX = Math.max(-0.5, Math.min(0.5, (event.clientX - bounds.left) / bounds.width - 0.5));
+  deckPointerY = Math.max(-0.5, Math.min(0.5, (event.clientY - bounds.top) / bounds.height - 0.5));
 
-  while (emberParticles.length < EMBER_MAX_PARTICLES) {
-    emberParticles.push(createEmberParticle());
+  if (!deckMotionFrame) {
+    deckMotionFrame = window.requestAnimationFrame(renderDeckMotion);
   }
-
-  while (smokeParticles.length < SMOKE_MAX_PARTICLES) {
-    smokeParticles.push(createSmokeParticle());
-  }
-
-  emberCtx.clearRect(0, 0, emberWidth, emberHeight);
-
-  /* Draw smoke first (behind embers) */
-  emberCtx.shadowBlur = 0;
-
-  smokeParticles = smokeParticles.filter((p) => {
-    p.age += 1;
-
-    if (p.age >= p.lifetime) {
-      return false;
-    }
-
-    const fadeIn = Math.min(p.age / 60, 1);
-    const fadeOut = Math.min((p.lifetime - p.age) / 80, 1);
-
-    p.opacity = p.maxOpacity * fadeIn * fadeOut;
-    p.x += p.vx + Math.sin(p.drift + p.age * p.driftSpeed) * p.driftAmplitude;
-    p.y += p.vy;
-    p.radius *= p.growRate;
-
-    if (p.y > emberHeight * 0.5 || p.x < -80 || p.x > emberWidth + 80) {
-      return false;
-    }
-
-    const gradient = emberCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.radius);
-    gradient.addColorStop(0, p.color);
-    gradient.addColorStop(0.4, p.color);
-    gradient.addColorStop(1, "transparent");
-    emberCtx.globalAlpha = p.opacity;
-    emberCtx.fillStyle = gradient;
-    emberCtx.beginPath();
-    emberCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-    emberCtx.fill();
-
-    return true;
-  });
-
-  /* Draw embers on top */
-  emberParticles = emberParticles.filter((p) => {
-    p.age += 1;
-
-    if (p.age >= p.lifetime) {
-      return false;
-    }
-
-    const fadeIn = Math.min(p.age / 30, 1);
-    const fadeOut = Math.min((p.lifetime - p.age) / 40, 1);
-
-    p.opacity = p.maxOpacity * fadeIn * fadeOut;
-    p.x += p.vx + Math.sin(p.drift + p.age * p.driftSpeed) * p.driftAmplitude;
-    p.y += p.vy;
-
-    if (p.x < -10 || p.x > emberWidth + 10 || p.y < -20) {
-      return false;
-    }
-
-    emberCtx.beginPath();
-    emberCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-    emberCtx.fillStyle = p.color;
-    emberCtx.globalAlpha = p.opacity;
-    emberCtx.shadowColor = p.color;
-    emberCtx.shadowBlur = p.radius * 6;
-    emberCtx.fill();
-
-    return true;
-  });
-
-  emberCtx.globalAlpha = 1;
-  emberCtx.shadowBlur = 0;
 };
 
-const renderStaticEmbers = () => {
-  resizeEmberCanvas();
-
-  if (!emberCtx) {
-    return;
-  }
-
-  const count = 8;
-
-  for (let i = 0; i < count; i++) {
-    const x = (emberWidth * (i + 0.5)) / count + (Math.random() - 0.5) * 60;
-    const y = emberHeight * 0.3 + Math.random() * emberHeight * 0.5;
-    const radius = 1.5 + Math.random() * 2;
-    const color = EMBER_COLORS[i % EMBER_COLORS.length];
-
-    emberCtx.beginPath();
-    emberCtx.arc(x, y, radius, 0, Math.PI * 2);
-    emberCtx.fillStyle = color;
-    emberCtx.globalAlpha = 0.15 + Math.random() * 0.15;
-    emberCtx.shadowColor = color;
-    emberCtx.shadowBlur = radius * 5;
-    emberCtx.fill();
-  }
-
-  emberCtx.globalAlpha = 1;
-  emberCtx.shadowBlur = 0;
-};
-
-const initEmberParticles = () => {
-  emberCtx = emberCanvas.getContext("2d");
-  resizeEmberCanvas();
-
-  if (reducedMotionMediaQuery.matches) {
-    renderStaticEmbers();
-    return;
-  }
-
-  window.addEventListener("resize", resizeEmberCanvas);
-  emberAnimationId = window.requestAnimationFrame(renderEmberFrame);
+const initHeroDeckMotion = () => {
+  heroStage.addEventListener("pointermove", handleDeckPointerMove, { passive: true });
+  heroStage.addEventListener("pointerleave", resetDeckMotion);
+  reducedMotionMediaQuery.addEventListener("change", resetDeckMotion);
+  finePointerMediaQuery.addEventListener("change", resetDeckMotion);
 };
 
 /* ── Bootstrap ── */
 
 const bootstrap = async () => {
-  requestAnimationFrame(() => requestAnimationFrame(revealHero));
-
-  initEmberParticles();
-  initScrollEffects();
-  initCardObserver();
+  initHeroDeckMotion();
 
   try {
     await refreshPortfolio();
     window.setInterval(refreshPortfolio, REFRESH_INTERVAL_MS);
   } catch (error) {
     showError("The portfolio could not be started. Refresh to try again.");
-    setRefreshMessage("Portfolio unavailable");
+    setRefreshMessage("Portfolio unavailable", true);
     console.error(error);
   }
 };
