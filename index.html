@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>EmberAPI | Roblox Portfolio</title>
     <meta
       name="description"
@@ -42,7 +42,7 @@
       href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Fragment+Mono&amp;family=Funnel+Display:wght@400;500;600;700&amp;display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=20260710n" />
+    <link rel="stylesheet" href="./styles.css?v=20260710o" />
   </head>
   <body>
     <a class="skip-link" href="#selectedWork">Skip to featured games</a>
@@ -328,6 +328,8 @@
       role="dialog"
       aria-modal="true"
       aria-labelledby="modalGameTitle"
+      tabindex="-1"
+      inert
     >
       <div class="game-modal-shell">
         <div class="modal-toolbar">
@@ -338,26 +340,11 @@
         </div>
 
         <div class="game-modal-panel">
-          <div class="modal-visual">
-            <div class="modal-media-wrap">
-              <img class="modal-media" id="modalGameImage" alt="" />
-              <div class="modal-media-meta">
-                <div class="detail-tags" id="modalGameTags"></div>
-                <span class="modal-media-year" id="modalGameYear"></span>
-              </div>
-            </div>
-
-            <div class="modal-actions">
-              <a class="button button-primary" id="modalGameLink" target="_blank" rel="noreferrer">
-                <span>Play on Roblox</span>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6.5v11l9-5.5-9-5.5Z" fill="currentColor" /></svg>
-              </a>
-              <a class="button button-secondary" id="modalCreatorLink" target="_blank" rel="noreferrer">
-                <span>Creator page</span>
-              </a>
-              <button class="button button-secondary" id="modalCopyLinkButton" type="button">
-                <span class="button-label">Copy game link</span>
-              </button>
+          <div class="modal-media-wrap">
+            <img class="modal-media" id="modalGameImage" alt="" />
+            <div class="modal-media-meta">
+              <div class="detail-tags" id="modalGameTags"></div>
+              <span class="modal-media-year" id="modalGameYear"></span>
             </div>
           </div>
 
@@ -370,6 +357,19 @@
             </div>
 
             <p class="modal-description" id="modalGameDescription"></p>
+            <button
+              class="modal-description-toggle"
+              id="modalDescriptionToggle"
+              type="button"
+              aria-expanded="false"
+              aria-controls="modalGameDescription"
+              hidden
+            >
+              <span>Read full description</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m7 9 5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" />
+              </svg>
+            </button>
 
             <div class="modal-stats">
               <div class="inline-stat">
@@ -386,10 +386,23 @@
               </div>
             </div>
           </div>
+
+          <div class="modal-actions">
+            <a class="button button-primary" id="modalGameLink" target="_blank" rel="noreferrer">
+              <span>Play on Roblox</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6.5v11l9-5.5-9-5.5Z" fill="currentColor" /></svg>
+            </a>
+            <a class="button button-secondary" id="modalCreatorLink" target="_blank" rel="noreferrer">
+              <span>Creator page</span>
+            </a>
+            <button class="button button-secondary" id="modalCopyLinkButton" type="button">
+              <span class="button-label" aria-live="polite">Copy game link</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
-    <script src="./script.js?v=20260710i" type="module"></script>
+    <script src="./script.js?v=20260710j" type="module"></script>
   </body>
 </html>

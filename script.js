@@ -27,12 +27,14 @@ const gameCount = document.querySelector("#gameCount");
 const lastRefresh = document.querySelector("#lastRefresh");
 const gameModalBackdrop = document.querySelector("#gameModalBackdrop");
 const gameModal = document.querySelector("#gameModal");
+const gameModalShell = document.querySelector(".game-modal-shell");
 const gameModalPanel = document.querySelector(".game-modal-panel");
 const modalCloseButton = document.querySelector("#modalCloseButton");
 const modalGameImage = document.querySelector("#modalGameImage");
 const modalGameYear = document.querySelector("#modalGameYear");
 const modalGameTitle = document.querySelector("#modalGameTitle");
 const modalGameDescription = document.querySelector("#modalGameDescription");
+const modalDescriptionToggle = document.querySelector("#modalDescriptionToggle");
 const modalGameCcu = document.querySelector("#modalGameCcu");
 const modalGameVisits = document.querySelector("#modalGameVisits");
 const modalGameFavorites = document.querySelector("#modalGameFavorites");
@@ -58,7 +60,12 @@ const heroDeckImageThird = document.querySelector("#heroDeckImageThird");
 
 const reducedMotionMediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 const finePointerMediaQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
-const defaultVisibleGameCount = 4;
+const compactLayoutMediaQuery = window.matchMedia(
+  "(max-width: 640px), (max-width: 940px) and (max-height: 560px) and (orientation: landscape) and (pointer: coarse)"
+);
+const mobileModalMediaQuery = window.matchMedia(
+  "(max-width: 800px), (max-width: 940px) and (max-height: 560px) and (orientation: landscape) and (pointer: coarse)"
+);
 
 const compactNumberFormatter = new Intl.NumberFormat("en-US", {
   notation: "compact",
@@ -79,8 +86,12 @@ const gameRevealAnimations = new WeakMap();
 let currentGamesByUniverseId = new Map();
 let activeModalUniverseId = null;
 let modalCloseTimeoutId = null;
+let modalDescriptionResizeFrameId = null;
 let copyLinkResetTimeoutId = null;
 let modalTriggerElement = null;
+let lockedPageScrollY = 0;
+let isPageScrollLocked = false;
+let usesFixedPageScrollLock = false;
 let heroFeaturedGame = null;
 let isRefreshing = false;
 let preloadedThumbnailPromises = new Map();
@@ -105,6 +116,86 @@ const hideError = () => {
 
 const setModalCopyLinkLabel = (label) => {
   modalCopyLinkLabel.textContent = label;
+};
+
+const setModalDescriptionExpanded = (isExpanded) => {
+  modalGameDescription.classList.toggle("is-expanded", isExpanded);
+  modalDescriptionToggle.setAttribute("aria-expanded", String(isExpanded));
+  modalDescriptionToggle.querySelector("span").textContent = isExpanded
+    ? "Show less"
+    : "Read full description";
+};
+
+const syncModalDescriptionToggle = () => {
+  if (!gameModal.classList.contains("is-visible") || !mobileModalMediaQuery.matches) {
+    modalDescriptionToggle.hidden = true;
+    return;
+  }
+
+  if (modalDescriptionToggle.getAttribute("aria-expanded") === "true") {
+    modalDescriptionToggle.hidden = false;
+    return;
+  }
+
+  modalDescriptionToggle.hidden = false;
+  modalDescriptionToggle.hidden = modalGameDescription.scrollHeight <= modalGameDescription.clientHeight + 1;
+};
+
+const scheduleModalDescriptionSync = () => {
+  if (!gameModal.classList.contains("is-visible") || modalDescriptionResizeFrameId) {
+    return;
+  }
+
+  modalDescriptionResizeFrameId = window.requestAnimationFrame(() => {
+    modalDescriptionResizeFrameId = null;
+    syncModalDescriptionToggle();
+  });
+};
+
+const lockPageScroll = () => {
+  if (isPageScrollLocked) {
+    return;
+  }
+
+  lockedPageScrollY = window.scrollY;
+  usesFixedPageScrollLock = mobileModalMediaQuery.matches;
+  isPageScrollLocked = true;
+
+  if (usesFixedPageScrollLock) {
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${lockedPageScrollY}px`;
+    document.body.style.right = "0";
+    document.body.style.left = "0";
+    document.body.style.width = "100%";
+  }
+
+  document.body.style.overflow = "hidden";
+};
+
+const unlockPageScroll = () => {
+  if (!isPageScrollLocked) {
+    return;
+  }
+
+  document.body.style.overflow = "";
+
+  if (usesFixedPageScrollLock) {
+    document.documentElement.style.overflow = "";
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.right = "";
+    document.body.style.left = "";
+    document.body.style.width = "";
+
+    const previousScrollBehavior = document.documentElement.style.scrollBehavior;
+    document.documentElement.style.scrollBehavior = "auto";
+    window.scrollTo(0, lockedPageScrollY);
+    document.documentElement.style.scrollBehavior = previousScrollBehavior;
+  }
+
+  isPageScrollLocked = false;
+  usesFixedPageScrollLock = false;
 };
 
 const formatCompactNumber = (value) => compactNumberFormatter.format(value ?? 0);
@@ -358,6 +449,7 @@ const normalizeThumbnailFrames = (frames) => {
 
 const openGameModal = (game, triggerElement = null) => {
   const wasOpen = gameModal.classList.contains("is-visible");
+  const isDifferentGame = activeModalUniverseId !== game.universeId;
 
   if (modalCloseTimeoutId) {
     window.clearTimeout(modalCloseTimeoutId);
@@ -373,12 +465,19 @@ const openGameModal = (game, triggerElement = null) => {
     modalTriggerElement = triggerElement ?? document.activeElement;
   }
 
+  const description = game.description || "No public description is available for this experience right now.";
+
   activeModalUniverseId = game.universeId;
   modalGameImage.src = game.iconUrl || game.imageUrls[0] || "";
   modalGameImage.alt = `${game.name} icon`;
   modalGameYear.textContent = game.year ?? "Live";
   modalGameTitle.textContent = game.name;
-  modalGameDescription.textContent = game.description || "No public description is available for this experience right now.";
+  modalGameDescription.textContent = description;
+  modalDescriptionToggle.hidden = true;
+
+  if (!wasOpen || isDifferentGame) {
+    setModalDescriptionExpanded(false);
+  }
   modalGameCcu.textContent = formatCompactNumber(game.playing);
   modalGameVisits.textContent = formatCompactNumber(game.visits);
   modalGameFavorites.textContent = formatCompactNumber(game.favorites);
@@ -392,11 +491,23 @@ const openGameModal = (game, triggerElement = null) => {
   gameModalPanel.dataset.accent = game.accent ?? "ember";
   setModalCopyLinkLabel("Copy game link");
   renderTagItems(modalGameTags, game);
+  gameModal.inert = false;
   gameModal.classList.add("is-visible");
   gameModalBackdrop.classList.add("is-visible");
   gameModal.setAttribute("aria-hidden", "false");
   pageShell.inert = true;
-  document.body.style.overflow = "hidden";
+
+  if (!wasOpen) {
+    lockPageScroll();
+  }
+
+  window.requestAnimationFrame(() => {
+    if (!wasOpen || isDifferentGame) {
+      gameModalShell.scrollTop = 0;
+    }
+
+    syncModalDescriptionToggle();
+  });
 
   if (!wasOpen) {
     window.requestAnimationFrame(() => modalCloseButton.focus());
@@ -411,20 +522,33 @@ const closeGameModal = () => {
   activeModalUniverseId = null;
   gameModal.classList.remove("is-visible");
   gameModalBackdrop.classList.remove("is-visible");
-  gameModal.setAttribute("aria-hidden", "true");
   pageShell.inert = false;
+
+  if (modalDescriptionResizeFrameId) {
+    window.cancelAnimationFrame(modalDescriptionResizeFrameId);
+    modalDescriptionResizeFrameId = null;
+  }
+
+  modalDescriptionToggle.hidden = true;
 
   const focusTarget = modalTriggerElement;
   modalTriggerElement = null;
+  const canRestoreTriggerFocus = focusTarget?.isConnected
+    && !focusTarget.closest("[inert]")
+    && focusTarget.getClientRects().length > 0;
+  const focusDestination = canRestoreTriggerFocus ? focusTarget : gamesToggle;
+
+  if (focusDestination?.isConnected && focusDestination.getClientRects().length > 0) {
+    focusDestination.focus({ preventScroll: true });
+  }
+
+  gameModal.setAttribute("aria-hidden", "true");
+  gameModal.inert = true;
 
   modalCloseTimeoutId = window.setTimeout(() => {
-    document.body.style.overflow = "";
+    unlockPageScroll();
     modalCloseTimeoutId = null;
   }, 260);
-
-  if (focusTarget?.isConnected) {
-    window.requestAnimationFrame(() => focusTarget.focus());
-  }
 };
 
 const getThumbnailTrackState = (track) => thumbnailTrackStates.get(track);
@@ -673,10 +797,11 @@ const revealGameCard = (node, revealIndex) => {
 
 const updateGamesVisibility = ({ animate = false } = {}) => {
   const cards = Array.from(gamesGrid.querySelectorAll(".game-card:not(.loading)"));
-  const extraGameCount = Math.max(0, cards.length - defaultVisibleGameCount);
+  const visibleGameCount = compactLayoutMediaQuery.matches ? 2 : 4;
+  const extraGameCount = Math.max(0, cards.length - visibleGameCount);
 
   cards.forEach((node, index) => {
-    const shouldHide = !areAllGamesVisible && index >= defaultVisibleGameCount;
+    const shouldHide = !areAllGamesVisible && index >= visibleGameCount;
     const wasHidden = node.hidden;
 
     if (shouldHide) {
@@ -689,7 +814,7 @@ const updateGamesVisibility = ({ animate = false } = {}) => {
     node.inert = shouldHide;
 
     if (animate && wasHidden && !shouldHide) {
-      revealGameCard(node, index - defaultVisibleGameCount);
+      revealGameCard(node, index - visibleGameCount);
     }
   });
 
@@ -710,6 +835,15 @@ gamesToggle.addEventListener("click", () => {
   areAllGamesVisible = !areAllGamesVisible;
   updateGamesVisibility({ animate: areAllGamesVisible });
 });
+
+compactLayoutMediaQuery.addEventListener("change", () => {
+  if (hasRenderedGames && !areAllGamesVisible) {
+    updateGamesVisibility();
+  }
+});
+
+mobileModalMediaQuery.addEventListener("change", scheduleModalDescriptionSync);
+window.addEventListener("resize", scheduleModalDescriptionSync, { passive: true });
 
 const renderGames = (games) => {
   gamesGrid.innerHTML = "";
@@ -869,7 +1003,8 @@ const refreshPortfolio = async () => {
 
   if (!portfolioData) {
     portfolioData = clonePortfolioData();
-    renderLoadingCards(Math.min(portfolioData.games.length || 3, 3));
+    const loadingCardCount = compactLayoutMediaQuery.matches ? 2 : 3;
+    renderLoadingCards(Math.min(portfolioData.games.length || loadingCardCount, loadingCardCount));
   }
 
   hideError();
@@ -961,7 +1096,7 @@ document.addEventListener("keydown", (event) => {
     gameModal.querySelectorAll(
       'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
     )
-  ).filter((element) => !element.hasAttribute("hidden"));
+  ).filter((element) => !element.hasAttribute("hidden") && element.getClientRects().length > 0);
 
   if (focusableElements.length === 0) {
     event.preventDefault();
@@ -1004,6 +1139,12 @@ modalCopyLinkButton.addEventListener("click", async () => {
     setModalCopyLinkLabel("Copy game link");
     copyLinkResetTimeoutId = null;
   }, 1800);
+});
+
+modalDescriptionToggle.addEventListener("click", () => {
+  const isExpanded = modalDescriptionToggle.getAttribute("aria-expanded") === "true";
+  setModalDescriptionExpanded(!isExpanded);
+  scheduleModalDescriptionSync();
 });
 
 heroGameButton.addEventListener("click", () => {
